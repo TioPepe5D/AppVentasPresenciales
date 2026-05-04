@@ -287,6 +287,16 @@
     .totals .row.grand .v{font-size:36px}
   }
   .totals .row.grand .v .currency{font-family:var(--mono);font-weight:500;font-size:11px;color:var(--ink-mute);letter-spacing:.15em;margin-right:6px;vertical-align:middle}
+  .totals .row.cobrar{
+    padding:10px 0 4px;border-top:1px dashed var(--line);margin-top:4px;
+    flex-direction:column;align-items:flex-start;gap:4px;
+  }
+  .totals .row.cobrar .k{color:var(--ink-mute);font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+  .totals .row.cobrar .v{color:var(--ink-dim);font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.01em}
+  .totals .row.cobrar .v .currency{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-mute);letter-spacing:.15em;margin-right:4px}
+  @media (min-width: 520px){
+    .totals .row.cobrar{flex-direction:row;align-items:baseline;gap:0}
+  }
 
   /* Actions */
   .actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
@@ -2128,6 +2138,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
               <div className="row grand">
                 <span className="k">Utilidad Total</span>
                 <span className="v"><span className="currency">CLP</span>${fmtCLP(saleSummary.profit)}</span>
+              </div>
+              <div className="row cobrar">
+                <span className="k">Total Venta a Cobrar</span>
+                <span className="v"><span className="currency">CLP</span>${fmtCLP(totals.total)}</span>
               </div>
             </div>
           </div>
