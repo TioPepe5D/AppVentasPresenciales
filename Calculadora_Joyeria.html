@@ -3408,8 +3408,14 @@ ${piezas}
 
 Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     try {
-      await navigator.clipboard.writeText(msg); showToast("¡Mensaje copiado!");
+      if (navigator.share) {
+        await navigator.share({ text: msg });
+        showToast("¡Mensaje enviado!");
+      } else {
+        await navigator.clipboard.writeText(msg); showToast("¡Mensaje copiado!");
+      }
     } catch (e) {
+      if (e?.name === 'AbortError') return;
       const ta = document.createElement('textarea');
       ta.value = msg; document.body.appendChild(ta); ta.select();
       try { document.execCommand('copy'); showToast("¡Mensaje copiado!"); } catch(_){ showToast("No se pudo copiar"); }
@@ -3640,16 +3646,7 @@ Total: $${fmtCLP(q.total)} CLP`;
       <div className={"toast" + (toast ? " show" : "")}>{toast}</div>
 
       {tab === 'calc' && (
-        <button className="fab" onClick={() => {
-          const validLines = lines.filter(isValidLine);
-          if (validLines.length === 0) return;
-          const piezas = buildMessagePiezas(validLines, prices);
-          const msg = `Pago: ${pago}\nAtención : ${attendant}\nAgenda : ${scheduler}\nNombre Cliente : ${clientName.trim()}\n\n${piezas}\n\nVenta: $${fmtCLP(totals.total)}`;
-          navigator.clipboard.writeText(`Nombre Cliente : ${clientName.trim()}\nPago: ${pago}\nAtencion : ${attendant}\nAgenda : ${scheduler}\n\n${piezas}\n\nVenta: $${fmtCLP(totals.total)}`).then(
-            () => showToast("¡Mensaje copiado!"),
-            () => showToast("No se pudo copiar")
-          );
-        }} disabled={!hasValidLines}>
+        <button className="fab" onClick={() => copyMessage()} disabled={!hasValidLines}>
           <span className="ico">📋</span> Copiar mensaje
         </button>
       )}
