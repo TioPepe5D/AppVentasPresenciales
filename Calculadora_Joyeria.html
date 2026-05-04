@@ -2433,7 +2433,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       return [fecha, q.client||'', normName(q.scheduler||EMPRESA), normName(q.attendant||EMPRESA), TIER_RULES[q.tier]?TIER_RULES[q.tier].label:'', r1(q.totalWeight), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), total, Math.round(totalCost), Math.round(profit), Math.round(base*PCT_SCHEDULER), Math.round(base*PCT_ATTENDANT), Math.round(base*PCT_EMPRESA)];
     });
     const esc = (v) => { const s=String(v??''); return /[",;\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
-    const csv = [header,...rows].map(r=>r.map(esc).join(';')).join('\r\n');
+    const csv = [header,...rows.reverse()].map(r=>r.map(esc).join(';')).join('\r\n');
     const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href=url; a.download=`ventas_${period}_${activeKey}.csv`;
@@ -2474,7 +2474,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       return [fecha, q.client || '', normName(q.pago || ''), normName(q.attendant || EMPRESA), normName(q.scheduler || EMPRESA), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), Math.round(insumosCost), Math.round(Number(q.total) || 0)];
     });
     const esc = (v) => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
-    const csv = [header, ...rows].map(r => r.map(esc).join(';')).join('\r\n');
+    const csv = [header, ...rows.reverse()].map(r => r.map(esc).join(';')).join('\r\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `ventas_${period}_${activeKey}.csv`;
