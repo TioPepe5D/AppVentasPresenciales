@@ -2429,8 +2429,9 @@ function ReportsTab({ history, prices, onToggleConcretada }){
           gramsByGroup[catToGroup[l.category]] += Number(l.grams)||0;
         }
       }
-      const r1 = (x) => (Math.round((x||0) * 10) / 10).toLocaleString('es-CL', {maximumFractionDigits:1});
-      return [fecha, q.client||'', normName(q.scheduler||EMPRESA), normName(q.attendant||EMPRESA), TIER_RULES[q.tier]?TIER_RULES[q.tier].label:'', r1(q.totalWeight), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), total, Math.round(totalCost), Math.round(profit), Math.round(base*PCT_SCHEDULER), Math.round(base*PCT_ATTENDANT), Math.round(base*PCT_EMPRESA)];
+      const r1 = (x) => { const n = Math.round((x||0) * 10) / 10; return n === 0 ? '' : n.toLocaleString('es-CL', {maximumFractionDigits:1}); };
+      const b0 = (n) => (n === 0 ? '' : n);
+      return [fecha, q.client||'', normName(q.scheduler||EMPRESA), normName(q.attendant||EMPRESA), TIER_RULES[q.tier]?TIER_RULES[q.tier].label:'', r1(q.totalWeight), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), b0(total), b0(Math.round(totalCost)), b0(Math.round(profit)), b0(Math.round(base*PCT_SCHEDULER)), b0(Math.round(base*PCT_ATTENDANT)), b0(Math.round(base*PCT_EMPRESA))];
     });
     const esc = (v) => { const s=String(v??''); return /[",;\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
     const csv = [header,...rows.reverse()].map(r=>r.map(esc).join(';')).join('\r\n');
@@ -2470,8 +2471,9 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         }
       }
 
-      const r1 = (x) => (Math.round((x || 0) * 10) / 10).toLocaleString('es-CL', { maximumFractionDigits: 1 });
-      return [fecha, q.client || '', normName(q.pago || ''), normName(q.attendant || EMPRESA), normName(q.scheduler || EMPRESA), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), Math.round(insumosCost), Math.round(Number(q.total) || 0)];
+      const r1 = (x) => { const n = Math.round((x || 0) * 10) / 10; return n === 0 ? '' : n.toLocaleString('es-CL', { maximumFractionDigits: 1 }); };
+      const b0 = (n) => (n === 0 ? '' : n);
+      return [fecha, q.client || '', normName(q.pago || ''), normName(q.attendant || EMPRESA), normName(q.scheduler || EMPRESA), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), b0(Math.round(insumosCost)), b0(Math.round(Number(q.total) || 0))];
     });
     const esc = (v) => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
     const csv = [header, ...rows.reverse()].map(r => r.map(esc).join(';')).join('\r\n');
