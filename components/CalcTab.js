@@ -1,6 +1,59 @@
 // ---------- Calculator Tab ----------
 function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy }){
   const [openPickerId, setOpenPickerId] = useState(null);
+  const saleSummary = useMemo(() => {
+    const grams = { cadena: 0, micro: 0, italy: 0, gf18k: 0 };
+    const regularGroupMap = {
+      collar_pulsera_mujer_925: 'cadena',
+      collar_pulsera_hombre_925: 'cadena',
+      aros_colgantes_925: 'cadena',
+      anillos_925: 'cadena',
+      collar_pulsera_micro: 'micro',
+      italiana_925: 'italy',
+      gf_18k: 'gf18k',
+    };
+    const loteGroupMap = { cadena: 'cadena', micro: 'micro', italiana: 'italy', gf18k: 'gf18k' };
+    let totalCost = 1000;
+    const insumos = [];
+
+    for (const line of lines) {
+      if (line.category === INSUMO_KEY) {
+        const cost = Number(line.insumoCost) || Number(line.insumoPrice) || 0;
+        const qty = 1;
+        totalCost += cost * qty;
+        if (cost > 0 || line.insumoName) {
+          insumos.push({
+            name: line.insumoName || 'Insumo',
+            cost: cost * qty,
+          });
+        }
+        continue;
+      }
+
+      if (line.category === LOTE_KEY) {
+        const loteCostMap = {
+          cadena: 'collar_pulsera_mujer_925',
+          micro: 'collar_pulsera_micro',
+          italiana: 'italiana_925',
+          gf18k: 'gf_18k',
+        };
+        for (const [typeKey, groupKey] of Object.entries(loteGroupMap)) {
+          const g = Number((line.loteGramsMap || {})[typeKey]) || 0;
+          grams[groupKey] += g;
+          const cat = prices[loteCostMap[typeKey]];
+          totalCost += effectiveCost(cat, totals.tier) * g;
+        }
+        continue;
+      }
+
+      const g = Number(line.grams) || 0;
+      const groupKey = regularGroupMap[line.category];
+      if (groupKey) grams[groupKey] += g;
+      totalCost += effectiveCost(prices[line.category], totals.tier) * g;
+    }
+
+    return { grams, insumos, totalCost, profit: (Number(totals.total) || 0) - totalCost };
+  }, [lines, prices, totals.tier, totals.total]);
   return (
     <div className="fade-in">
       <div className="card">
@@ -59,15 +112,16 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const g = Number(line.grams) || 0;
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
-            const insumoQtyVal   = Number(line.insumoQty)   || 1;
+            const insumoQtyVal   = 1;
+            const showHighInsumoQtyWarning = false;
             const lotePriceVal   = Number(line.lotePrice)   || 0;
-            const sub = isInsumo ? insumoValorVal * insumoQtyVal : isLote ? lotePriceVal : price * g;
+            const sub = isInsumo ? insumoValorVal : isLote ? lotePriceVal : price * g;
             return (
-              <div className="line" key={line.id}>
+              <div className={`line${isInsumo ? ' line-insumo' : ''}`} key={line.id}>
                 <span className="line-idx">N°{String(i+1).padStart(2,'0')}</span>
                 {(isInsumo || isLote) ? (
                   <>
-                    <div className="field" style={{gridColumn:'1 / -1'}}>
+                    <div className="field line-category-field" style={{gridColumn:'1 / -1'}}>
                       <label>Categoría</label>
                       <div className="control">
                         <select value={line.category} onChange={e => updateLine(line.id, { category: e.target.value })}>
@@ -80,8 +134,22 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                       </div>
                     </div>
                     {isInsumo && (
-                    <div className="field">
-                      <label>Costo</label>
+                    <div className="field insumo-name-primary" style={{gridColumn:'1 / -1'}}>
+                      <label>Nombre del insumo</label>
+                      <div className="control">
+                        <input type="text"
+                          value={line.insumoName || ''}
+                          onChange={e => updateLine(line.id, { insumoName: e.target.value })}
+                          placeholder="Ej. Maletero, Caja, etc."
+                          style={{paddingRight:0}}
+                        />
+                        <span className="unit">ðŸ’Ž</span>
+                      </div>
+                    </div>
+                    )}
+                    {isInsumo && (
+                    <div className="field insumo-cost-field">
+                      <label>Costo producto</label>
                       <div className="control">
                         <span className="unit" style={{marginLeft:0,marginRight:6}}>$</span>
                         <input
@@ -97,7 +165,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     )}
                     {isInsumo ? (
                       <>
-                        <div className="field">
+                        <div className="field insumo-qty-field">
                           <label>Cantidad</label>
                           <div className="control">
                             <input type="number" inputMode="numeric" min="1"
@@ -111,8 +179,8 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                         <button className="remove" onClick={() => removeLine(line.id)} aria-label="Eliminar línea" disabled={lines.length === 1}>
                           <Icon name="x" size={14}/>
                         </button>
-                        <div className="field" style={{gridColumn:'1 / -1'}}>
-                          <label>Valor del insumo</label>
+                        <div className="field insumo-value-field">
+                          <label>Precio de venta</label>
                           <div className="control">
                             <span className="unit" style={{marginLeft:0,marginRight:6}}>$</span>
                             <input type="number" inputMode="numeric" min="0"
@@ -122,7 +190,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                             />
                           </div>
                         </div>
-                        <div className="field" style={{gridColumn:'1 / -1'}}>
+                        <div className="field insumo-name-old" style={{gridColumn:'1 / -1'}}>
                           <label>Nombre del insumo</label>
                           <div className="control">
                             <input type="text"
@@ -132,6 +200,14 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                             />
                             <span className="unit">💎</span>
                           </div>
+                        </div>
+                        {showHighInsumoQtyWarning && (
+                          <div className="insumo-note insumo-note-warning" style={{gridColumn:'1 / -1'}}>
+                            Revisa si estas ingresando unidades sueltas. Para paquetes de 50/100 bolsas, normalmente va cantidad 1.
+                          </div>
+                        )}
+                        <div className="insumo-note" style={{gridColumn:'1 / -1'}}>
+                          Para bolsas/paquetes: usa cantidad 1, costo total del paquete y valor de venta total.
                         </div>
                       </>
                     ) : (
@@ -274,6 +350,18 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                 <div className="line-meta">
                   {isInsumo ? (
                     <>
+                      <span className="price-tag insumo-price-tag-clean">
+                        {insumoQtyVal === 1 ? (
+                          <>Insumo &middot; ${fmtCLP(insumoValorVal)}</>
+                        ) : (
+                          <>Insumo &middot; {insumoQtyVal} un. &times; ${fmtCLP(insumoValorVal)}</>
+                        )}
+                      </span>
+                      <span className="price-tag insumo-price-tag">
+                        {insumoQtyVal === 1
+                          ? `Insumo Â· $${fmtCLP(insumoValorVal)}`
+                          : `Insumo Â· $${fmtCLP(insumoValorVal)}`}
+                      </span>
                       <span className="price-tag">Insumo · {insumoQtyVal} un. × ${fmtCLP(insumoValorVal)}</span>
                       <span className="subtotal">${fmtCLP(sub)}</span>
                     </>
@@ -332,6 +420,54 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             <div className="row grand">
               <span className="k">Total</span>
               <span className="v"><span className="currency">CLP</span>${fmtCLP(totals.total)}</span>
+            </div>
+            <div className="summary-block">
+              <h3>GRAMOS VENDIDOS</h3>
+              <div className="row">
+                <span className="k">Cadena</span>
+                <span className="v">{fmtCLP(saleSummary.grams.cadena)} g</span>
+              </div>
+              <div className="row">
+                <span className="k">Micro</span>
+                <span className="v">{fmtCLP(saleSummary.grams.micro)} g</span>
+              </div>
+              <div className="row">
+                <span className="k">Italy</span>
+                <span className="v">{fmtCLP(saleSummary.grams.italy)} g</span>
+              </div>
+              <div className="row">
+                <span className="k">GF 18 K</span>
+                <span className="v">{fmtCLP(saleSummary.grams.gf18k)} g</span>
+              </div>
+            </div>
+            <div className="summary-block">
+              <h3>INSUMOS VENDIDOS</h3>
+              {saleSummary.insumos.length ? saleSummary.insumos.map((insumo, idx) => (
+                <div className="row" key={`${insumo.name}-${idx}`}>
+                  <span className="k">{insumo.name}</span>
+                  <span className="v">(${fmtCLP(insumo.cost)})</span>
+                </div>
+              )) : (
+                <div className="row muted">
+                  <span className="k">Sin insumos</span>
+                  <span className="v">($0)</span>
+                </div>
+              )}
+            </div>
+            <div className="summary-block sale-detail">
+              <h3>DETALLES VENTA</h3>
+              <div className="row">
+                <span className="k">+ Venta Total</span>
+                <span className="v">${fmtCLP(totals.total)}</span>
+              </div>
+              <div className="row">
+                <span className="k">- Costo Total</span>
+                <span className="v">${fmtCLP(saleSummary.totalCost)}</span>
+              </div>
+              <div className="row grand">
+                <span className="k">Utilidad Total</span>
+                <span className="v"><span className="currency">CLP</span>${fmtCLP(saleSummary.profit)}</span>
+              </div>
             </div>
           </div>
           <div className="actions">

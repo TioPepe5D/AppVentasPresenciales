@@ -104,7 +104,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     return {rows,totalVentas,totalCostos,totalGanancia,totalComisionEquipo,totalEmpresa,gramsByGroup,pagosByPerson,totalPagos};
   }, [periodQuotes, prices]);
 
-  const exportCSV = () => {
+  const exportCSVLegacy = () => {
     const header=["Fecha","Cliente","Agendó","Atendió","Tramo","Gramos Total","G. Cadena","G. Micro","G. Italiana","G. GF 18K","Venta","Costo","Ganancia","Comisión Agendó (35%)","Comisión Atendió (35%)","Comisión Empresa (30%)"];
     const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
     const rows=periodQuotes.map(q=>{
@@ -119,6 +119,47 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     const csv=[header,...rows].map(r=>r.map(esc).join(';')).join('\r\n');
     const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}); const url=URL.createObjectURL(blob);
     const a=document.createElement('a'); a.href=url; a.download=`ventas_${period}_${activeKey}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
+  const exportCSV = () => {
+    const header = ["Fecha","Cliente","Pago:","Atendi\u00f3:","Agendo:","Cadena:","Micro:","Italy:","GF 18K:","Insumos: (Costo Total)","Total Venta:"];
+    const catToGroup = {
+      collar_pulsera_mujer_925: 'cadena',
+      collar_pulsera_hombre_925: 'cadena',
+      collar_pulsera_micro: 'micro',
+      aros_colgantes_925: 'micro',
+      anillos_925: 'micro',
+      italiana_925: 'italiana',
+      gf_18k: 'gf18k',
+    };
+    const rows = periodQuotes.map(q => {
+      const d = new Date(q.at);
+      const fecha = d.toLocaleDateString('es-CL') + ' ' + d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+      const gramsByGroup = { cadena: 0, micro: 0, italiana: 0, gf18k: 0 };
+      let insumosCost = 0;
+
+      for (const l of (q.lines || [])) {
+        if (l.category === LOTE_KEY) {
+          const gm = l.loteGramsMap || {};
+          for (const k of ['cadena','micro','italiana','gf18k']) gramsByGroup[k] += Number(gm[k]) || 0;
+        } else if (l.category === INSUMO_KEY) {
+          const cost = Number(l.insumoCost) || Number(l.insumoPrice) || 0;
+          const qty = Number(l.insumoQty) || 1;
+          insumosCost += cost * qty;
+        } else if (catToGroup[l.category]) {
+          gramsByGroup[catToGroup[l.category]] += Number(l.grams) || 0;
+        }
+      }
+
+      const r1 = (x) => (Math.round((x || 0) * 10) / 10).toLocaleString('es-CL', { maximumFractionDigits: 1 });
+      return [fecha, q.client || '', q.pago || '', q.attendant || EMPRESA, q.scheduler || EMPRESA, r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), Math.round(insumosCost), Math.round(Number(q.total) || 0)];
+    });
+    const esc = (v) => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+    const csv = [header, ...rows].map(r => r.map(esc).join(';')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `ventas_${period}_${activeKey}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
@@ -175,10 +216,10 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         </div>
       </div>
 
-      {(summary.rows.length>0||Object.keys(summary.pagosByPerson).length>0)&&(
+      {summary.rows.length>0&&(
         <div className="card">
           <div className="card-head"><h2>Por <em>persona</em></h2></div>
-          <div style={{padding:'10px 14px 2px'}}>
+          <div style={{display:'none',padding:'10px 14px 2px'}}>
             <div className="eyebrow" style={{marginBottom:8,letterSpacing:'.18em'}}>💰 Pagos recibidos</div>
             <div style={{display:'flex',flexDirection:'column',gap:4}}>
               {TEAM.map(name=>{const p=summary.pagosByPerson[name]||0;if(!p)return null;return(<div key={name} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'5px 0',borderBottom:'1px dashed var(--line)',fontFamily:'var(--mono)',fontSize:13}}><span style={{color:'var(--ink-dim)',fontWeight:600}}>{name}</span><span style={{color:'var(--ink)',fontWeight:700}}>${fmtCLP(p)}</span></div>);})}
@@ -207,7 +248,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         </div>
       )}
 
-      {periodQuotes.length>0&&(
+      {false&&periodQuotes.length>0&&(
         <div className="card">
           <div className="card-head"><h2>Resumen <em>financiero</em></h2></div>
           <div style={{padding:'14px 14px 16px',display:'flex',flexDirection:'column',gap:8}}>

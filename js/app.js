@@ -136,11 +136,19 @@ function App(){
     const validLines = lines.filter(isValidLine);
     if (validLines.length === 0) return;
     const piezas = buildMessagePiezas(validLines, prices);
-    const msg =
+    let msg =
 `Pago: ${pago}
 Atención : ${attendant}
 Agenda : ${scheduler}
 Nombre Cliente : ${clientName.trim()}
+
+${piezas}
+
+Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
+    msg = `Nombre Cliente : ${clientName.trim()}
+Pago: ${pago}
+Atencion : ${attendant}
+Agenda : ${scheduler}
 
 ${piezas}
 
@@ -164,7 +172,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     for (const l of validLines) {
       if (l.category === INSUMO_KEY) {
         const cost = Number(l.insumoCost) || Number(l.insumoPrice) || 0;
-        const qty  = Number(l.insumoQty)  || 1;
+        const qty  = 1;
         totalCost += cost * qty; continue;
       }
       if (l.category === LOTE_KEY) {
@@ -195,7 +203,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     const profit = (Number(totals.total) || 0) - totalCost;
     const entry = {
       id: uid(), at: Date.now(),
-      client: clientName.trim(), scheduler, attendant,
+      client: clientName.trim(), pago, scheduler, attendant,
       concretada: true,
       userId:   fbUser.uid,
       userName: userProfile?.name || fbUser.email,
@@ -206,8 +214,8 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
           const valor = l.insumoValor !== '' && l.insumoValor !== undefined && l.insumoValor !== null
             ? Number(l.insumoValor)
             : cost;
-          const qty   = Number(l.insumoQty) || 1;
-          return { category: INSUMO_KEY, insumoName: l.insumoName || 'Insumo', insumoCost: cost, insumoValor: valor, insumoQty: qty, insumoPrice: valor * qty, grams: 0 };
+          const qty   = 1;
+          return { category: INSUMO_KEY, insumoName: l.insumoName || 'Insumo', insumoCost: cost, insumoValor: valor, insumoQty: qty, insumoPrice: valor, grams: 0 };
         }
         if (l.category === LOTE_KEY) {
           const gramsMap    = l.loteGramsMap || {};
@@ -223,6 +231,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       // Limpiar undefined antes de guardar en Firestore
       const cleanEntry = JSON.parse(JSON.stringify(entry, (k, v) => v === undefined ? null : v));
       await window.__FB.saveQuote(fbUser.uid, cleanEntry);
+      resetCalc();
       showToast("Cotización guardada ☁️");
     } catch(e) { showToast("Error al guardar: " + e.message); }
   };
@@ -235,7 +244,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       insumoName: l.insumoName  || '',
       insumoCost: l.insumoCost  ? String(l.insumoCost)  : (l.insumoPrice ? String(l.insumoPrice) : ''),
       insumoValor: l.insumoValor ? String(l.insumoValor) : '',
-      insumoQty:  l.insumoQty   ? String(l.insumoQty)   : '1',
+      insumoQty:  '1',
       loteName:   l.loteName    || '',
       loteGramsMap: l.loteGramsMap || {},
       lotePrice:  l.lotePrice   ? String(l.lotePrice)   : '',
@@ -382,7 +391,7 @@ Total: $${fmtCLP(q.total)} CLP`;
           if (validLines.length === 0) return;
           const piezas = buildMessagePiezas(validLines, prices);
           const msg = `Pago: ${pago}\nAtención : ${attendant}\nAgenda : ${scheduler}\nNombre Cliente : ${clientName.trim()}\n\n${piezas}\n\nVenta: $${fmtCLP(totals.total)}`;
-          navigator.clipboard.writeText(msg).then(
+          navigator.clipboard.writeText(`Nombre Cliente : ${clientName.trim()}\nPago: ${pago}\nAtencion : ${attendant}\nAgenda : ${scheduler}\n\n${piezas}\n\nVenta: $${fmtCLP(totals.total)}`).then(
             () => showToast("¡Mensaje copiado!"),
             () => showToast("No se pudo copiar")
           );

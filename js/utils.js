@@ -91,7 +91,8 @@ const buildMessagePiezas = (validLines, prices) => {
   for (const u of ungrouped) lines.push(`${fmtGrams(u.grams)} | ${u.emoji} ${u.label}`);
   for (const ins of insumos) {
     const cost  = Number(ins.insumoCost)  || Number(ins.insumoPrice) || 0;
-    const qty   = Number(ins.insumoQty)   || 1;
+    const valor = Number(ins.insumoValor) || Number(ins.insumoPrice) || cost;
+    const qty = 1;
     lines.push(`💎 ${qty} ${ins.insumoName || 'Insumo'}: $${fmtCLP(cost * qty)}`);
   }
   return lines.join('\n');
@@ -128,7 +129,7 @@ function computeTotals(lines, prices){
   const insumoTotal = lines.filter(l => l.category === INSUMO_KEY).reduce((s,l) => {
     const cost  = Number(l.insumoCost)  || Number(l.insumoPrice) || 0;
     const valor = Number(l.insumoValor) || cost;
-    const qty   = Number(l.insumoQty)   || 1;
+    const qty   = 1;
     return s + valor * qty;
   }, 0);
   const loteTotal = lines.filter(l => l.category === LOTE_KEY).reduce((s,l) => s + (Number(l.lotePrice)||0), 0);

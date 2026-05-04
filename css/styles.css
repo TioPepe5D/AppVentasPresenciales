@@ -156,6 +156,28 @@
     transition: all .15s;
   }
   .line .remove:hover{color:var(--danger);border-color:rgba(224,122,122,.4)}
+  .line-insumo .insumo-qty-field,
+  .line-insumo .insumo-name-old,
+  .line-insumo .insumo-note,
+  .line-insumo .insumo-price-tag-clean + .insumo-price-tag,
+  .line-insumo .insumo-price-tag-clean + .insumo-price-tag + .price-tag{display:none}
+  .line-insumo{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 40px;align-items:end}
+  .line-insumo .line-category-field{grid-column:1 / -1;grid-row:1}
+  .line-insumo .insumo-name-primary{grid-column:1 / -1;grid-row:2}
+  .line-insumo .insumo-cost-field{grid-column:1;grid-row:3}
+  .line-insumo .remove{grid-column:3;grid-row:3;margin-top:15px}
+  .line-insumo .insumo-value-field{grid-column:2;grid-row:3}
+  .line-insumo .insumo-name-primary .unit{display:none}
+  .line-insumo .line-meta{grid-column:1 / -1;grid-row:4;margin-top:8px}
+  @media (max-width: 480px){
+    .line-insumo{grid-template-columns:1fr 40px}
+    .line-insumo .line-category-field,
+    .line-insumo .insumo-name-primary{grid-column:1 / -1;grid-row:auto}
+    .line-insumo .insumo-cost-field{grid-column:1;grid-row:auto}
+    .line-insumo .insumo-value-field{grid-column:1;grid-row:auto}
+    .line-insumo .remove{grid-column:2;grid-row:4}
+    .line-insumo .line-meta{grid-row:auto}
+  }
 
   .line-meta{
     grid-column: 1 / -1;
@@ -165,6 +187,23 @@
   }
   .line-meta .price-tag{color:var(--ink-dim)}
   .line-meta .subtotal{color:var(--gold-2);font-size:13px;font-weight:600;letter-spacing:.02em}
+  .insumo-note{
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:rgba(var(--surface-overlay-rgb),.28);
+    color:var(--ink-dim);
+    font-family:var(--mono);
+    font-size:10px;
+    font-weight:500;
+    letter-spacing:.04em;
+    line-height:1.45;
+    padding:8px 10px;
+  }
+  .insumo-note-warning{
+    border-color:rgba(199,122,90,.55);
+    background:rgba(199,122,90,.12);
+    color:#e9b79f;
+  }
 
   .add-line{
     display:flex;align-items:center;justify-content:center;gap:8px;
@@ -201,9 +240,16 @@
   .tier-body .why strong{color:var(--ink);font-weight:600}
 
   .totals{display:grid;gap:10px}
+  .totals > .row{display:none !important}
   .totals .row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0}
   .totals .row .k{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.18em;color:var(--ink-mute);text-transform:uppercase}
   .totals .row .v{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--ink-dim);letter-spacing:.02em}
+  .summary-block{display:grid;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+  .summary-block:first-of-type{border-top:0;padding-top:0}
+  .summary-block h3{margin:0 0 2px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.2em;color:var(--ink);text-transform:uppercase}
+  .summary-block .row.muted .k,
+  .summary-block .row.muted .v{color:var(--ink-mute)}
+  .sale-detail .row .k{color:var(--ink-dim)}
 
   /* Total en mobile */
   .totals .row.grand{
@@ -221,9 +267,9 @@
   .totals .row.grand .v .currency{font-family:var(--mono);font-weight:500;font-size:11px;color:var(--ink-mute);letter-spacing:.15em;margin-right:6px;vertical-align:middle}
 
   /* Actions */
-  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
   .btn{
-    flex:1;min-width:120px;
+    width:100%;min-width:0;
     padding:14px 18px;border-radius:999px;
     font-size:15px;font-weight:600;letter-spacing:.02em;
     border:1px solid var(--line-2);background:var(--panel);
@@ -430,6 +476,10 @@
     padding:14px 16px;
     display:flex;flex-direction:column;gap:10px;
   }
+  .client > .control-labeled:nth-child(1){order:2}
+  .client > .control-labeled:nth-child(2){order:1}
+  .client > .control-labeled:nth-child(3){order:4}
+  .client > .control-labeled:nth-child(4){order:3}
   .client-row{display:grid;grid-template-columns:1fr;gap:10px}
   @media (min-width: 520px){ .client-row{grid-template-columns:1fr 1fr} }
   .control-labeled{
