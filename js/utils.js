@@ -108,7 +108,7 @@ function computeTotals(lines, prices){
   const calcRegularTotal = (tierIdx) => regular.reduce((s,l) => {
     const cat = prices[l.category];
     if (!cat) return s;
-    const unitPrice = l.customPrice ? (Number(l.customPrice)||0) : (cat.prices[tierIdx]||0);
+    const unitPrice = Number(l.customPrice) || 0;
     return s + unitPrice * (Number(l.grams)||0);
   }, 0);
 

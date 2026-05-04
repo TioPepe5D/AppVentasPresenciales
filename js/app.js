@@ -128,7 +128,7 @@ function App(){
   const isValidLine = (l) => {
     if (l.category === INSUMO_KEY) return Number(l.insumoCost) > 0 || !!(l.insumoName && l.insumoName.trim());
     if (l.category === LOTE_KEY)   return Number(l.lotePrice) > 0;
-    return Number(l.grams) > 0;
+    return Number(l.grams) > 0 && Number(l.customPrice) > 0;
   };
   const hasValidLines = lines.some(isValidLine);
 
@@ -222,7 +222,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
           const totalGrams  = Object.values(gramsMap).reduce((s,v) => s+(Number(v)||0), 0);
           return { category: LOTE_KEY, loteName: l.loteName || '', loteGramsMap: gramsMap, lotePrice: Number(l.lotePrice) || 0, grams: totalGrams };
         }
-        return { category: l.category, grams: Number(l.grams), customPrice: l.customPrice ? Number(l.customPrice) : null };
+        return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0 };
       }),
       tier: totals.tier, total: totals.total, totalWeight: totals.totalWeight,
       kilero, costsSnap, totalCost, profit,
@@ -284,7 +284,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         return `• ${nombre} — $${fmtCLP(Number(l.lotePrice) || 0)}`;
       }
       const cat   = p[l.category];
-      const price = l.customPrice ? Number(l.customPrice) : (cat ? cat.prices[q.tier] : 0);
+      const price = Number(l.customPrice) || 0;
       return `• ${cat ? cat.name : l.category} — ${l.grams}g × $${fmtCLP(price)} = $${fmtCLP(price * l.grams)}`;
     }).join('\n');
     const text =

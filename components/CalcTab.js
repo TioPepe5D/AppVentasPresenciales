@@ -108,7 +108,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const isLote   = line.category === LOTE_KEY;
             const cat = (!isInsumo && !isLote) ? prices[line.category] : null;
             const tierPrice = cat ? cat.prices[totals.tier] : 0;
-            const price = (!isInsumo && !isLote && line.customPrice) ? (Number(line.customPrice) || 0) : tierPrice;
+            const price = (!isInsumo && !isLote) ? (Number(line.customPrice) || 0) : tierPrice;
             const g = Number(line.grams) || 0;
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
@@ -293,7 +293,24 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   </>
                 )}
                 {!isInsumo && !isLote && (
-                  <div style={{gridColumn:'1 / -1',marginTop:2}}>
+                  <div className="field custom-price-field" style={{gridColumn:'1 / -1',marginTop:2}}>
+                    <label>Precio a cobrar</label>
+                    <div className="control">
+                      <span className="unit" style={{marginLeft:0,marginRight:6}}>$</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={line.customPrice || ''}
+                        onChange={e => updateLine(line.id, { customPrice: e.target.value })}
+                        placeholder="Precio por gramo"
+                      />
+                      <span className="unit">CLP/g</span>
+                    </div>
+                  </div>
+                )}
+                {!isInsumo && !isLote && (
+                  <div className="legacy-price-table" style={{gridColumn:'1 / -1',marginTop:2}}>
                     <button
                       onClick={() => setOpenPickerId(openPickerId === line.id ? null : line.id)}
                       style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 12px',background:'var(--surface-2,rgba(255,255,255,.05))',border:'1px solid var(--line)',borderRadius:8,color:'var(--ink)',fontSize:12,fontFamily:'var(--mono)',cursor:'pointer',transition:'border-color .15s'}}
@@ -373,7 +390,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   ) : (
                     <>
                       <span className="price-tag">
-                        {line.customPrice ? `$${fmtCLP(price)}/g · PERSONALIZADO` : `$${fmtCLP(price)}/g · tramo ${TIER_RULES[totals.tier].label}`}
+                        {`$${fmtCLP(price)}/g · precio a cobrar`}
                       </span>
                       <span className="subtotal">${fmtCLP(sub)}</span>
                     </>

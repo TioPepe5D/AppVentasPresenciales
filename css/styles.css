@@ -156,6 +156,8 @@
     transition: all .15s;
   }
   .line .remove:hover{color:var(--danger);border-color:rgba(224,122,122,.4)}
+  .legacy-price-table{display:none}
+  .custom-price-field .control input[type="number"]{font-size:16px}
   .line-insumo .insumo-qty-field,
   .line-insumo .insumo-name-old,
   .line-insumo .insumo-note,
@@ -234,6 +236,7 @@
     position:relative;flex-shrink:0;
   }
   .tier-badge::after{content:"";position:absolute;inset:3px;border:1px solid rgba(var(--highlight-rgb),.2);border-radius:4px}
+  .summary > .tier{display:none}
   .tier-body{flex:1;min-width:0}
   .tier-body .eyebrow{margin-bottom:2px}
   .tier-body .why{font-size:13px;color:var(--ink-dim);line-height:1.4}

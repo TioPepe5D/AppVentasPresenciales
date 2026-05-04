@@ -175,6 +175,8 @@
     transition: all .15s;
   }
   .line .remove:hover{color:var(--danger);border-color:rgba(224,122,122,.4)}
+  .legacy-price-table{display:none}
+  .custom-price-field .control input[type="number"]{font-size:16px}
   .line-insumo .insumo-qty-field,
   .line-insumo .insumo-name-old,
   .line-insumo .insumo-note,
@@ -253,6 +255,7 @@
     position:relative;flex-shrink:0;
   }
   .tier-badge::after{content:"";position:absolute;inset:3px;border:1px solid rgba(var(--highlight-rgb),.2);border-radius:4px}
+  .summary > .tier{display:none}
   .tier-body{flex:1;min-width:0}
   .tier-body .eyebrow{margin-bottom:2px}
   .tier-body .why{font-size:13px;color:var(--ink-dim);line-height:1.4}
@@ -1134,7 +1137,7 @@ function computeTotals(lines, prices){
   const calcRegularTotal = (tierIdx) => regular.reduce((s,l) => {
     const cat = prices[l.category];
     if (!cat) return s;
-    const unitPrice = l.customPrice ? (Number(l.customPrice)||0) : (cat.prices[tierIdx]||0);
+    const unitPrice = Number(l.customPrice) || 0;
     return s + unitPrice * (Number(l.grams)||0);
   }, 0);
 
@@ -1745,7 +1748,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const isLote   = line.category === LOTE_KEY;
             const cat = (!isInsumo && !isLote) ? prices[line.category] : null;
             const tierPrice = cat ? cat.prices[totals.tier] : 0;
-            const price = (!isInsumo && !isLote && line.customPrice) ? (Number(line.customPrice) || 0) : tierPrice;
+            const price = (!isInsumo && !isLote) ? (Number(line.customPrice) || 0) : tierPrice;
             const g = Number(line.grams) || 0;
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
@@ -1930,7 +1933,24 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   </>
                 )}
                 {!isInsumo && !isLote && (
-                  <div style={{gridColumn:'1 / -1',marginTop:2}}>
+                  <div className="field custom-price-field" style={{gridColumn:'1 / -1',marginTop:2}}>
+                    <label>Precio a cobrar</label>
+                    <div className="control">
+                      <span className="unit" style={{marginLeft:0,marginRight:6}}>$</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={line.customPrice || ''}
+                        onChange={e => updateLine(line.id, { customPrice: e.target.value })}
+                        placeholder="Precio por gramo"
+                      />
+                      <span className="unit">CLP/g</span>
+                    </div>
+                  </div>
+                )}
+                {!isInsumo && !isLote && (
+                  <div className="legacy-price-table" style={{gridColumn:'1 / -1',marginTop:2}}>
                     <button
                       onClick={() => setOpenPickerId(openPickerId === line.id ? null : line.id)}
                       style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 12px',background:'var(--surface-2,rgba(255,255,255,.05))',border:'1px solid var(--line)',borderRadius:8,color:'var(--ink)',fontSize:12,fontFamily:'var(--mono)',cursor:'pointer',transition:'border-color .15s'}}
@@ -2010,7 +2030,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   ) : (
                     <>
                       <span className="price-tag">
-                        {line.customPrice ? `$${fmtCLP(price)}/g · PERSONALIZADO` : `$${fmtCLP(price)}/g · tramo ${TIER_RULES[totals.tier].label}`}
+                        {`$${fmtCLP(price)}/g · precio a cobrar`}
                       </span>
                       <span className="subtotal">${fmtCLP(sub)}</span>
                     </>
@@ -3348,7 +3368,7 @@ function App(){
   const isValidLine = (l) => {
     if (l.category === INSUMO_KEY) return Number(l.insumoCost) > 0 || !!(l.insumoName && l.insumoName.trim());
     if (l.category === LOTE_KEY)   return Number(l.lotePrice) > 0;
-    return Number(l.grams) > 0;
+    return Number(l.grams) > 0 && Number(l.customPrice) > 0;
   };
   const hasValidLines = lines.some(isValidLine);
 
@@ -3442,7 +3462,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
           const totalGrams  = Object.values(gramsMap).reduce((s,v) => s+(Number(v)||0), 0);
           return { category: LOTE_KEY, loteName: l.loteName || '', loteGramsMap: gramsMap, lotePrice: Number(l.lotePrice) || 0, grams: totalGrams };
         }
-        return { category: l.category, grams: Number(l.grams), customPrice: l.customPrice ? Number(l.customPrice) : null };
+        return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0 };
       }),
       tier: totals.tier, total: totals.total, totalWeight: totals.totalWeight,
       pago, kilero, costsSnap, totalCost, profit,
@@ -3504,7 +3524,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         return `• ${nombre} — $${fmtCLP(Number(l.lotePrice) || 0)}`;
       }
       const cat   = p[l.category];
-      const price = l.customPrice ? Number(l.customPrice) : (cat ? cat.prices[q.tier] : 0);
+      const price = Number(l.customPrice) || 0;
       return `• ${cat ? cat.name : l.category} — ${l.grams}g × $${fmtCLP(price)} = $${fmtCLP(price * l.grams)}`;
     }).join('\n');
     const text =
