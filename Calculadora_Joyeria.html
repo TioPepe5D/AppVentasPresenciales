@@ -725,6 +725,8 @@ const LS_CUSTOM_THEME = "joya.theme.custom.v1";
 
 const APP_PASSWORD = ".";
 const TEAM = ["Diego","Martin","Jordan","Cris","Vale","Amanda","Benja"];
+const NAME_MAP = {"Cristopher":"Cris","Cristópher":"Cris","Benjamín":"Benja","Benjamin":"Benja","Valentina":"Vale","Martín":"Martin"};
+const normName = (n) => NAME_MAP[n] || n;
 const EMPRESA = "Empresa";
 const PCT_SCHEDULER = 0.35;
 const PCT_ATTENDANT = 0.35;
@@ -1565,9 +1567,9 @@ function SalesList({ quotes, prices }){
             <div className="ri-sub">
               <span>{fmtDate(q.at)}</span>
               <span className="sep">·</span>
-              <span>Agendó: <b>{q.scheduler || EMPRESA}</b></span>
+              <span>Agendó: <b>{normName(q.scheduler || EMPRESA)}</b></span>
               <span className="sep">·</span>
-              <span>Atendió: <b>{q.attendant || EMPRESA}</b></span>
+              <span>Atendió: <b>{normName(q.attendant || EMPRESA)}</b></span>
             </div>
             {isOpen && (
               <div className="fade-in" style={{marginTop:10}}>
@@ -2373,8 +2375,8 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       const { totalCost, profit } = quoteCostAndProfit(q, prices);
       const base = Math.max(0, profit);
       totalVentas += total; totalCostos += totalCost; totalGanancia += profit;
-      const sched = (q.scheduler||'').trim() || EMPRESA;
-      const att   = (q.attendant ||'').trim() || EMPRESA;
+      const sched = normName((q.scheduler||'').trim() || EMPRESA);
+      const att   = normName((q.attendant ||'').trim() || EMPRESA);
       inc(sched,'agendado', base*PCT_SCHEDULER);
       inc(att,  'atendido', base*PCT_ATTENDANT);
       inc(EMPRESA,'empresa', base*PCT_EMPRESA);
@@ -2435,7 +2437,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         }
       }
       const r1 = (x) => (Math.round((x||0) * 10) / 10).toLocaleString('es-CL', {maximumFractionDigits:1});
-      return [fecha, q.client||'', q.scheduler||EMPRESA, q.attendant||EMPRESA, TIER_RULES[q.tier]?TIER_RULES[q.tier].label:'', r1(q.totalWeight), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), total, Math.round(totalCost), Math.round(profit), Math.round(base*PCT_SCHEDULER), Math.round(base*PCT_ATTENDANT), Math.round(base*PCT_EMPRESA)];
+      return [fecha, q.client||'', normName(q.scheduler||EMPRESA), normName(q.attendant||EMPRESA), TIER_RULES[q.tier]?TIER_RULES[q.tier].label:'', r1(q.totalWeight), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), total, Math.round(totalCost), Math.round(profit), Math.round(base*PCT_SCHEDULER), Math.round(base*PCT_ATTENDANT), Math.round(base*PCT_EMPRESA)];
     });
     const esc = (v) => { const s=String(v??''); return /[",;\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
     const csv = [header,...rows].map(r=>r.map(esc).join(';')).join('\r\n');
@@ -2476,7 +2478,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       }
 
       const r1 = (x) => (Math.round((x || 0) * 10) / 10).toLocaleString('es-CL', { maximumFractionDigits: 1 });
-      return [fecha, q.client || '', q.pago || '', q.attendant || EMPRESA, q.scheduler || EMPRESA, r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), Math.round(insumosCost), Math.round(Number(q.total) || 0)];
+      return [fecha, q.client || '', q.pago || '', normName(q.attendant || EMPRESA), normName(q.scheduler || EMPRESA), r1(gramsByGroup.cadena), r1(gramsByGroup.micro), r1(gramsByGroup.italiana), r1(gramsByGroup.gf18k), Math.round(insumosCost), Math.round(Number(q.total) || 0)];
     });
     const esc = (v) => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
     const csv = [header, ...rows].map(r => r.map(esc).join(';')).join('\r\n');
@@ -2895,8 +2897,8 @@ function ChartsTab({ history, prices }) {
       const total = Number(q.total) || 0;
       const { profit } = quoteCostAndProfit(q, prices);
       const base = Math.max(0, profit);
-      const sched = (q.scheduler || '').trim() || EMPRESA;
-      const att   = (q.attendant  || '').trim() || EMPRESA;
+      const sched = normName((q.scheduler || '').trim() || EMPRESA);
+      const att   = normName((q.attendant  || '').trim() || EMPRESA);
       totals[sched] = (totals[sched] || 0) + base * PCT_SCHEDULER;
       totals[att]   = (totals[att]   || 0) + base * PCT_ATTENDANT;
     }
@@ -3490,7 +3492,7 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
   };
 
   const loadQuote = (q) => {
-    setClientName(q.client || ""); setScheduler(q.scheduler || ""); setAttendant(q.attendant || ""); setConcretada(!!q.concretada);
+    setClientName(q.client || ""); setScheduler(normName(q.scheduler || "")); setAttendant(normName(q.attendant || "")); setConcretada(!!q.concretada);
     setLines(q.lines.map(l => ({
       id: uid(), category: l.category,
       grams:      (l.category === INSUMO_KEY || l.category === LOTE_KEY) ? '' : String(l.grams),
