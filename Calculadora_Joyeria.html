@@ -722,6 +722,7 @@ const LS_AUTH      = "joya.auth.v1";
 const LS_HIST_MIG  = "joya.history.migrated.v2";
 const LS_THEME     = "joya.theme.v1";
 const LS_CUSTOM_THEME = "joya.theme.custom.v1";
+const LS_DRAFT     = "joya.draft.v1";
 
 const APP_PASSWORD = ".";
 const TEAM = ["Diego","Martin","Jordan","Cris","Vale","Amanda","Benja"];
@@ -3314,12 +3315,12 @@ function App(){
     return () => unsub && unsub();
   }, [fbUser?.uid, isAdmin]);
 
-  const [clientName, setClientName] = useState("");
-  const [scheduler, setScheduler]   = useState("");
-  const [attendant, setAttendant]   = useState("");
-  const [pago, setPago]             = useState(() => localStorage.getItem(LS_PAGO) || "");
+  const [clientName, setClientName] = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.clientName || ""; } catch { return ""; } });
+  const [scheduler, setScheduler]   = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.scheduler || ""; } catch { return ""; } });
+  const [attendant, setAttendant]   = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.attendant || ""; } catch { return ""; } });
+  const [pago, setPago]             = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.pago || localStorage.getItem(LS_PAGO) || ""; } catch { return localStorage.getItem(LS_PAGO) || ""; } });
   const [concretada, setConcretada] = useState(false);
-  const [lines, setLines]           = useState([{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
+  const [lines, setLines]           = useState(() => { try { const d = JSON.parse(localStorage.getItem(LS_DRAFT)); return d?.lines?.length ? d.lines : [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } catch { return [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } });
 
   const [toast, setToast]   = useState("");
   const toastTimer           = useRef(null);
@@ -3342,10 +3343,13 @@ function App(){
     return () => window.removeEventListener('message', onMsg);
   }, []);
 
-  // Persistencia local (precios, tab, pago)
+  // Persistencia local (precios, tab, pago, borrador calculadora)
   useEffect(() => { localStorage.setItem(LS_TAB,    tab);                     }, [tab]);
   useEffect(() => { localStorage.setItem(LS_PRICES, JSON.stringify(prices));  }, [prices]);
   useEffect(() => { localStorage.setItem(LS_PAGO,   pago);                    }, [pago]);
+  useEffect(() => {
+    localStorage.setItem(LS_DRAFT, JSON.stringify({ clientName, scheduler, attendant, pago, lines }));
+  }, [clientName, scheduler, attendant, pago, lines]);
 
   // Tema
   const [theme, setTheme]           = useState(() => localStorage.getItem(LS_THEME) || 'dark');
@@ -3370,6 +3374,7 @@ function App(){
   const resetCalc = () => {
     setLines([{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
     setClientName(""); setScheduler(""); setAttendant(""); setConcretada(false);
+    localStorage.removeItem(LS_DRAFT);
   };
 
   const isValidLine = (l) => {
