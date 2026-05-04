@@ -273,29 +273,28 @@
   .summary-block .row.muted .v{color:var(--ink-mute)}
   .sale-detail .row .k{color:var(--ink-dim)}
 
-  /* Total en mobile */
+  /* Utilidad — secundaria, discreta */
   .totals .row.grand{
-    padding:16px 0 4px;border-top:1px solid var(--line);margin-top:6px;
-    flex-direction:column;align-items:flex-start;gap:4px;
+    padding:10px 0 4px;border-top:1px solid var(--line);margin-top:6px;
+    display:flex;flex-direction:row;align-items:baseline;justify-content:space-between;gap:0;
   }
-  .totals .row.grand .k{color:var(--ink);font-family:var(--serif);font-weight:500;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+  .totals .row.grand .k{color:var(--ink-mute);font-family:var(--mono);font-weight:600;font-size:10px;letter-spacing:.18em;text-transform:uppercase}
   .totals .row.grand .v{
-    color:var(--gold-2);font-family:var(--serif);font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1;
+    color:var(--ink-dim);font-family:var(--mono);font-size:16px;font-weight:600;letter-spacing:-.01em;
   }
-  @media (min-width: 520px){
-    .totals .row.grand{flex-direction:row;align-items:baseline;gap:0}
-    .totals .row.grand .v{font-size:36px}
-  }
-  .totals .row.grand .v .currency{font-family:var(--mono);font-weight:500;font-size:11px;color:var(--ink-mute);letter-spacing:.15em;margin-right:6px;vertical-align:middle}
+  .totals .row.grand .v .currency{font-family:var(--mono);font-weight:500;font-size:9px;color:var(--ink-mute);letter-spacing:.15em;margin-right:4px;vertical-align:middle}
+
+  /* Total a cobrar — principal, destacado */
   .totals .row.cobrar{
-    padding:10px 0 4px;border-top:1px dashed var(--line);margin-top:4px;
+    padding:16px 0 4px;border-top:2px solid var(--gold-2);margin-top:8px;
     flex-direction:column;align-items:flex-start;gap:4px;
   }
-  .totals .row.cobrar .k{color:var(--ink-mute);font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
-  .totals .row.cobrar .v{color:var(--ink-dim);font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-.01em}
-  .totals .row.cobrar .v .currency{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-mute);letter-spacing:.15em;margin-right:4px}
+  .totals .row.cobrar .k{color:var(--gold-2);font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.22em;text-transform:uppercase}
+  .totals .row.cobrar .v{color:var(--gold-2);font-family:var(--serif);font-size:44px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .totals .row.cobrar .v .currency{font-family:var(--mono);font-weight:500;font-size:11px;color:var(--ink-mute);letter-spacing:.15em;margin-right:6px;vertical-align:middle}
   @media (min-width: 520px){
     .totals .row.cobrar{flex-direction:row;align-items:baseline;gap:0}
+    .totals .row.cobrar .v{font-size:36px}
   }
 
   /* Actions */
@@ -725,7 +724,7 @@ const LS_THEME     = "joya.theme.v1";
 const LS_CUSTOM_THEME = "joya.theme.custom.v1";
 
 const APP_PASSWORD = ".";
-const TEAM = ["Diego","Benjamín","Jordan","Cristopher","Valentina","Amanda","Martín"];
+const TEAM = ["Diego","Martin","Jordan","Cris","Vale","Amanda","Benja"];
 const EMPRESA = "Empresa";
 const PCT_SCHEDULER = 0.35;
 const PCT_ATTENDANT = 0.35;
