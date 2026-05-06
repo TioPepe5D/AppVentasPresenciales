@@ -3478,7 +3478,8 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       costsSnap[l.category] = c;
       totalCost += c * g;
     }
-    const profit = (Number(totals.total) || 0) - totalCost;
+    const savedTotal = customTotal !== "" ? (Number(customTotal.toString().replace(/\D/g,"")) || totals.total) : totals.total;
+    const profit = savedTotal - totalCost;
     const entry = {
       id: uid(), at: Date.now(),
       client: clientName.trim(), pago, scheduler, attendant,
@@ -3502,7 +3503,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         }
         return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0 };
       }),
-      tier: totals.tier, total: totals.total, totalWeight: totals.totalWeight,
+      tier: totals.tier, total: savedTotal, totalWeight: totals.totalWeight,
       pago, kilero, costsSnap, totalCost, profit,
     };
     try {
