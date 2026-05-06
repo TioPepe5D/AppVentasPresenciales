@@ -1651,8 +1651,10 @@ function SalesList({ quotes, prices }){
 ═══════════════════════════════════════ */
 
 // ---------- Calculator Tab ----------
-function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy }){
+function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy, customTotal, setCustomTotal }){
   const [openPickerId, setOpenPickerId] = useState(null);
+  const [editingTotal, setEditingTotal] = useState(false);
+  const displayTotal = customTotal !== "" ? (Number(customTotal.toString().replace(/\D/g,"")) || 0) : totals.total;
   const saleSummary = useMemo(() => {
     const grams = { cadena: 0, micro: 0, italy: 0, gf18k: 0 };
     const regularGroupMap = {
@@ -2142,8 +2144,30 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                 <span className="v"><span className="currency">CLP</span>${fmtCLP(saleSummary.profit)}</span>
               </div>
               <div className="row cobrar">
-                <span className="k">Total Venta a Cobrar</span>
-                <span className="v"><span className="currency">CLP</span>${fmtCLP(totals.total)}</span>
+                <span className="k" style={{display:'flex',alignItems:'center',gap:6}}>
+                  Total Venta a Cobrar
+                  <button
+                    onClick={()=>{ setEditingTotal(e=>!e); if(editingTotal) setCustomTotal(""); }}
+                    style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',borderRadius:4,color: customTotal !== "" ? 'var(--gold-2)' : 'var(--ink-mute)',fontSize:11,lineHeight:1}}
+                    title={customTotal !== "" ? "Restaurar precio calculado" : "Personalizar monto"}
+                  >{customTotal !== "" ? "✕ reset" : "✏︎"}</button>
+                </span>
+                {editingTotal ? (
+                  <input
+                    type="number"
+                    value={customTotal}
+                    onChange={e => setCustomTotal(e.target.value)}
+                    onBlur={()=>{ if(customTotal==="") setEditingTotal(false); }}
+                    placeholder={String(totals.total)}
+                    autoFocus
+                    style={{fontFamily:'var(--serif)',fontSize:28,fontWeight:700,color:'var(--gold-2)',background:'transparent',border:'none',borderBottom:'2px solid var(--gold-2)',outline:'none',width:'100%',textAlign:'right',padding:'2px 0'}}
+                  />
+                ) : (
+                  <span className="v" style={customTotal !== "" ? {color:'var(--gold-2)',textDecoration:'none'} : {}}>
+                    <span className="currency">CLP</span>${fmtCLP(displayTotal)}
+                    {customTotal !== "" && <span style={{display:'block',fontSize:10,color:'var(--ink-mute)',fontFamily:'var(--mono)',fontWeight:400,marginTop:2}}>calculado: ${fmtCLP(totals.total)}</span>}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -3323,6 +3347,7 @@ function App(){
   const [pago, setPago]             = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.pago || localStorage.getItem(LS_PAGO) || ""; } catch { return localStorage.getItem(LS_PAGO) || ""; } });
   const [concretada, setConcretada] = useState(false);
   const [lines, setLines]           = useState(() => { try { const d = JSON.parse(localStorage.getItem(LS_DRAFT)); return d?.lines?.length ? d.lines : [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } catch { return [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } });
+  const [customTotal, setCustomTotal] = useState("");
 
   const [toast, setToast]   = useState("");
   const toastTimer           = useRef(null);
@@ -3376,6 +3401,7 @@ function App(){
   const resetCalc = () => {
     setLines([{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
     setClientName(""); setScheduler(""); setAttendant(""); setConcretada(false);
+    setCustomTotal("");
     localStorage.removeItem(LS_DRAFT);
   };
 
@@ -3390,23 +3416,15 @@ function App(){
     const validLines = lines.filter(isValidLine);
     if (validLines.length === 0) return;
     const piezas = buildMessagePiezas(validLines, prices);
-    let msg =
-`Pago: ${pago}
-Atención : ${attendant}
-Agenda : ${scheduler}
-Nombre Cliente : ${clientName.trim()}
-
-${piezas}
-
-Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
-    msg = `Nombre Cliente : ${clientName.trim()}
+    const ventaTotal = customTotal !== "" ? (Number(customTotal.toString().replace(/\D/g,"")) || totals.total) : totals.total;
+    const msg = `Nombre Cliente : ${clientName.trim()}
 Pago: ${pago}
 Atencion : ${attendant}
 Agenda : ${scheduler}
 
 ${piezas}
 
-Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
+Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     try {
       if (navigator.share) {
         await navigator.share({ text: msg });
@@ -3629,6 +3647,7 @@ Total: $${fmtCLP(q.total)} CLP`;
           addLine={addLine} removeLine={removeLine} updateLine={updateLine}
           totals={totals} resetCalc={resetCalc} saveQuote={saveQuote}
           copyMessage={copyMessage} canCopy={hasValidLines}
+          customTotal={customTotal} setCustomTotal={setCustomTotal}
         />
       )}
       {tab === 'hist' && (
