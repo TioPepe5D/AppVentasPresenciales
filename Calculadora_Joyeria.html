@@ -1125,8 +1125,11 @@ const buildMessagePiezas = (validLines, prices) => {
   for (const u of ungrouped) lines.push(`${fmtGrams(u.grams)} | ${u.emoji} ${u.label}`);
   for (const ins of insumos) {
     const cost  = Number(ins.insumoCost)  || Number(ins.insumoPrice) || 0;
-    const qty   = 1;
-    lines.push(`💎 ${qty} ${ins.insumoName || 'Insumo'}: $${fmtCLP(cost * qty)}`);
+    const qty   = Number(ins.insumoQty)  || 1;
+    const name  = ins.insumoName || 'Insumo';
+    const nameStartsWithNumber = /^\d/.test(name.trim());
+    const qtyPrefix = (qty > 1 && !nameStartsWithNumber) ? `${qty} ` : nameStartsWithNumber ? '' : '';
+    lines.push(`💎 ${qtyPrefix}${name}: $${fmtCLP(cost * qty)}`);
   }
   return lines.join('\n');
 };
