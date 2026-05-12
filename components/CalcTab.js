@@ -31,16 +31,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
       }
 
       if (line.category === LOTE_KEY) {
-        const loteCostMap = {
-          cadena: 'collar_pulsera_mujer_925',
-          micro: 'collar_pulsera_micro',
-          italiana: 'italiana_925',
-          gf18k: 'gf_18k',
-        };
         for (const [typeKey, groupKey] of Object.entries(loteGroupMap)) {
           const g = Number((line.loteGramsMap || {})[typeKey]) || 0;
           grams[groupKey] += g;
-          const cat = prices[loteCostMap[typeKey]];
+          const cat = prices[LOTE_CAT_MAP[typeKey]];
           totalCost += effectiveCost(cat, totals.tier) * g;
         }
         continue;
@@ -113,7 +107,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
             const insumoQtyVal   = 1;
-            const showHighInsumoQtyWarning = false;
             const lotePriceVal   = Number(line.lotePrice)   || 0;
             const sub = isInsumo ? insumoValorVal : isLote ? lotePriceVal : price * g;
             return (
@@ -201,11 +194,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                             <span className="unit">💎</span>
                           </div>
                         </div>
-                        {showHighInsumoQtyWarning && (
-                          <div className="insumo-note insumo-note-warning" style={{gridColumn:'1 / -1'}}>
-                            Revisa si estas ingresando unidades sueltas. Para paquetes de 50/100 bolsas, normalmente va cantidad 1.
-                          </div>
-                        )}
                         <div className="insumo-note" style={{gridColumn:'1 / -1'}}>
                           Para bolsas/paquetes: usa cantidad 1, costo total del paquete y valor de venta total.
                         </div>

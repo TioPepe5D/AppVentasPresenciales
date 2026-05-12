@@ -11,12 +11,6 @@ const effectiveCost = (cat, tier) => {
 const quoteCostAndProfit = (quote, prices) => {
   const BASE_COST = 1000; // Costo base fijo por bolsas/insumos
   let tCost = BASE_COST;
-  const LOTE_CAT_MAP = {
-    cadena:   'collar_pulsera_mujer_925',
-    micro:    'collar_pulsera_micro',
-    italiana: 'italiana_925',
-    gf18k:    'gf_18k',
-  };
   for (const l of (quote.lines || [])) {
     if (l.category === INSUMO_KEY) {
       // Usar insumoCost (costo real del insumo), no insumoPrice (que es el valor cobrado al cliente)

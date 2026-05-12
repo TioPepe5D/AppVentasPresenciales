@@ -22,6 +22,13 @@ const LOTE_TYPES = [
   { key: "gf18k",    label: "GF 18K",  emoji: "☀️" },
 ];
 
+const LOTE_CAT_MAP = {
+  cadena:   'collar_pulsera_mujer_925',
+  micro:    'collar_pulsera_micro',
+  italiana: 'italiana_925',
+  gf18k:    'gf_18k',
+};
+
 const TIER_RULES = [
   { label: "PU",  desc: "Precio unitario (pieza individual)" },
   { label: "I",   desc: "Supera $30.000" },
