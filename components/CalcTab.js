@@ -2,12 +2,12 @@
 function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy }){
   const [openPickerId, setOpenPickerId] = useState(null);
   const saleSummary = useMemo(() => {
-    const grams = { cadena: 0, micro: 0, italy: 0, gf18k: 0 };
+    const grams = { cadena: 0, micro: 0, italy: 0, gf18k: 0, aros: 0, anillos: 0 };
     const regularGroupMap = {
       collar_pulsera_mujer_925: 'cadena',
       collar_pulsera_hombre_925: 'cadena',
-      aros_colgantes_925: 'cadena',
-      anillos_925: 'cadena',
+      aros_colgantes_925: 'aros',
+      anillos_925: 'anillos',
       collar_pulsera_micro: 'micro',
       italiana_925: 'italy',
       gf_18k: 'gf18k',
@@ -455,6 +455,14 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
               <div className="row">
                 <span className="k">GF 18 K</span>
                 <span className="v">{fmtCLP(saleSummary.grams.gf18k)} g</span>
+              </div>
+              <div className="row">
+                <span className="k">Aros y Colgantes</span>
+                <span className="v">{fmtCLP(saleSummary.grams.aros)} g</span>
+              </div>
+              <div className="row">
+                <span className="k">Anillos</span>
+                <span className="v">{fmtCLP(saleSummary.grams.anillos)} g</span>
               </div>
             </div>
             <div className="summary-block">
