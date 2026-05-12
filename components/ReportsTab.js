@@ -74,7 +74,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
   const summary = useMemo(() => {
     const byPerson = {};
     let totalVentas = 0, totalCostos = 0, totalGanancia = 0;
-    const LOTE_CAT_MAP_REPORT = { cadena:'collar_pulsera_mujer_925', micro:'collar_pulsera_micro', italiana:'italiana_925', gf18k:'gf_18k' };
     const gramsByGroup = { cadena:0, micro:0, italiana:0, gf18k:0 };
     const catToGroup = {
       collar_pulsera_mujer_925:'cadena', collar_pulsera_hombre_925:'cadena',
@@ -90,7 +89,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       const sched=(q.scheduler||'').trim()||EMPRESA, att=(q.attendant||'').trim()||EMPRESA;
       inc(sched,'agendado',base*PCT_SCHEDULER); inc(att,'atendido',base*PCT_ATTENDANT); inc(EMPRESA,'empresa',base*PCT_EMPRESA);
       for (const l of (q.lines||[])) {
-        if (l.category===LOTE_KEY) { const gm=l.loteGramsMap||{}; for (const [tk] of Object.entries(LOTE_CAT_MAP_REPORT)) gramsByGroup[tk]=(gramsByGroup[tk]||0)+(Number(gm[tk])||0); }
+        if (l.category===LOTE_KEY) { const gm=l.loteGramsMap||{}; for (const [tk] of Object.entries(LOTE_CAT_MAP)) gramsByGroup[tk]=(gramsByGroup[tk]||0)+(Number(gm[tk])||0); }
         else if (catToGroup[l.category]) gramsByGroup[catToGroup[l.category]]+=Number(l.grams)||0;
       }
     }

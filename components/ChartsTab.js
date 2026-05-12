@@ -49,7 +49,6 @@ function ChartsTab({ history, prices }) {
   const gramsData = useMemo(() => {
     const now = new Date();
     const cutoff = new Date(now.getFullYear(), now.getMonth() - period + 1, 1).getTime();
-    const LOTE_CAT_MAP = { cadena: 'collar_pulsera_mujer_925', micro: 'collar_pulsera_micro', italiana: 'italiana_925', gf18k: 'gf_18k' };
     const grams = {};
     for (const q of history) {
       if (!q.concretada || q.at < cutoff) continue;

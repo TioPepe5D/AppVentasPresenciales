@@ -178,12 +178,6 @@ Venta: $${fmtCLP(totals.total)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       if (l.category === LOTE_KEY) {
         // El costo del lote se calcula por gramaje × costo de cada categoría
         const gramsMap = l.loteGramsMap || {};
-        const LOTE_CAT_MAP = {
-          cadena:   'collar_pulsera_mujer_925',
-          micro:    'collar_pulsera_micro',
-          italiana: 'italiana_925',
-          gf18k:    'gf_18k',
-        };
         let loteCost = 0;
         for (const [typeKey, catKey] of Object.entries(LOTE_CAT_MAP)) {
           const g = Number(gramsMap[typeKey]) || 0;

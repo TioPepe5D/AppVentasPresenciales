@@ -706,6 +706,13 @@ const LOTE_TYPES = [
   { key: "gf18k",    label: "GF 18K",  emoji: "☀️" },
 ];
 
+const LOTE_CAT_MAP = {
+  cadena:   'collar_pulsera_mujer_925',
+  micro:    'collar_pulsera_micro',
+  italiana: 'italiana_925',
+  gf18k:    'gf_18k',
+};
+
 const TIER_RULES = [
   { label: "PU",  desc: "Precio unitario (pieza individual)" },
   { label: "I",   desc: "Supera $30.000" },
@@ -1208,12 +1215,6 @@ const effectiveCost = (cat, tier) => {
 const quoteCostAndProfit = (quote, prices) => {
   const BASE_COST = 1000; // Costo base fijo por bolsas/insumos
   let tCost = BASE_COST;
-  const LOTE_CAT_MAP = {
-    cadena:   'collar_pulsera_mujer_925',
-    micro:    'collar_pulsera_micro',
-    italiana: 'italiana_925',
-    gf18k:    'gf_18k',
-  };
   for (const l of (quote.lines || [])) {
     if (l.category === INSUMO_KEY) {
       // Usar insumoCost (costo real), no insumoPrice (valor cobrado al cliente)
@@ -1688,16 +1689,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
       }
 
       if (line.category === LOTE_KEY) {
-        const loteCostMap = {
-          cadena: 'collar_pulsera_mujer_925',
-          micro: 'collar_pulsera_micro',
-          italiana: 'italiana_925',
-          gf18k: 'gf_18k',
-        };
         for (const [typeKey, groupKey] of Object.entries(loteGroupMap)) {
           const g = Number((line.loteGramsMap || {})[typeKey]) || 0;
           grams[groupKey] += g;
-          const cat = prices[loteCostMap[typeKey]];
+          const cat = prices[LOTE_CAT_MAP[typeKey]];
           totalCost += effectiveCost(cat, totals.tier) * g;
         }
         continue;
@@ -1770,7 +1765,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
             const insumoQtyVal   = 1;
-            const showHighInsumoQtyWarning = false;
             const lotePriceVal   = Number(line.lotePrice)   || 0;
             const sub = isInsumo ? insumoValorVal : isLote ? lotePriceVal : price * g;
             return (
@@ -1858,11 +1852,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                             <span className="unit">💎</span>
                           </div>
                         </div>
-                        {showHighInsumoQtyWarning && (
-                          <div className="insumo-note insumo-note-warning" style={{gridColumn:'1 / -1'}}>
-                            Revisa si estas ingresando unidades sueltas. Para paquetes de 50/100 bolsas, normalmente va cantidad 1.
-                          </div>
-                        )}
                         <div className="insumo-note" style={{gridColumn:'1 / -1'}}>
                           Para bolsas/paquetes: usa cantidad 1, costo total del paquete y valor de venta total.
                         </div>
@@ -2379,7 +2368,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
   const summary = useMemo(() => {
     const byPerson = {};
     let totalVentas = 0, totalCostos = 0, totalGanancia = 0;
-    const LOTE_CAT_MAP_REPORT = { cadena:'collar_pulsera_mujer_925', micro:'collar_pulsera_micro', italiana:'italiana_925', gf18k:'gf_18k' };
     const gramsByGroup = { cadena: 0, micro: 0, italiana: 0, gf18k: 0 };
     const catToGroup = {
       collar_pulsera_mujer_925:'cadena', collar_pulsera_hombre_925:'cadena',
@@ -2403,7 +2391,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       for (const l of (q.lines||[])) {
         if (l.category === LOTE_KEY) {
           const gm = l.loteGramsMap || {};
-          for (const [typeKey] of Object.entries(LOTE_CAT_MAP_REPORT))
+          for (const [typeKey] of Object.entries(LOTE_CAT_MAP))
             gramsByGroup[typeKey] = (gramsByGroup[typeKey]||0) + (Number(gm[typeKey])||0);
         } else if (catToGroup[l.category]) {
           gramsByGroup[catToGroup[l.category]] += Number(l.grams)||0;
@@ -2638,33 +2626,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
             </div>
           </div>
 
-        </div>
-      )}
-
-      {/* ── RESUMEN FINANCIERO ── */}
-      {false && periodQuotes.length > 0 && (
-        <div className="card">
-          <div className="card-head"><h2>Resumen <em>financiero</em></h2></div>
-          <div style={{padding:'14px 14px 16px',display:'flex',flexDirection:'column',gap:8}}>
-            {[
-              ['Venta total',       summary.totalVentas,         'var(--gold-2)'],
-              ['Costo total',       summary.totalCostos,         'var(--ink-dim)'],
-              ['Ganancia',          summary.totalGanancia,       summary.totalGanancia>=0?'#4ade80':'var(--danger)'],
-              ['Comisiones equipo', summary.totalComisionEquipo, 'var(--ink)'],
-              ['Empresa (30%)',     summary.totalEmpresa,        'var(--ink)'],
-            ].map(([label,val,color]) => (
-              <div key={label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'6px 0',borderBottom:'1px solid var(--line)',fontFamily:'var(--mono)'}}>
-                <span style={{fontSize:11,letterSpacing:'.14em',color:'var(--ink-mute)',textTransform:'uppercase'}}>{label}</span>
-                <span style={{fontSize:15,fontWeight:700,color}}>${fmtCLP(val)}</span>
-              </div>
-            ))}
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'8px 0 0',fontFamily:'var(--mono)'}}>
-              <span style={{fontSize:11,letterSpacing:'.14em',color:'var(--ink-mute)',textTransform:'uppercase'}}>Pagos registrados (campo pago)</span>
-              <span style={{fontSize:15,fontWeight:700,color:'var(--ink-dim)'}}>
-                ${fmtCLP(summary.totalPagos)}
-              </span>
-            </div>
-          </div>
         </div>
       )}
 
@@ -2934,7 +2895,6 @@ function ChartsTab({ history, prices }) {
   const gramsData = useMemo(() => {
     const now = new Date();
     const cutoff = new Date(now.getFullYear(), now.getMonth() - period + 1, 1).getTime();
-    const LOTE_CAT_MAP = { cadena: 'collar_pulsera_mujer_925', micro: 'collar_pulsera_micro', italiana: 'italiana_925', gf18k: 'gf_18k' };
     const grams = {};
     for (const q of history) {
       if (!q.concretada || q.at < cutoff) continue;
@@ -3459,12 +3419,6 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       if (l.category === LOTE_KEY) {
         // El costo del lote se calcula por gramaje × costo de cada categoría
         const gramsMap = l.loteGramsMap || {};
-        const LOTE_CAT_MAP = {
-          cadena:   'collar_pulsera_mujer_925',
-          micro:    'collar_pulsera_micro',
-          italiana: 'italiana_925',
-          gf18k:    'gf_18k',
-        };
         let loteCost = 0;
         for (const [typeKey, catKey] of Object.entries(LOTE_CAT_MAP)) {
           const g = Number(gramsMap[typeKey]) || 0;
