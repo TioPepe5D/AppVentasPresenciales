@@ -3113,16 +3113,16 @@ function ChartsTab({ history, prices }) {
 
   const personData = useMemo(()=>{
     const totals={};
+    const inc=(name,field,val)=>{ if(!totals[name]) totals[name]={agendado:0,atendido:0,empresa:0}; totals[name][field]+=val; };
     for(const q of visibleSales){
       const base=Math.max(0,quoteCostAndProfit(q,prices).profit);
       const sched=normName((q.scheduler||'').trim()||EMPRESA),att=normName((q.attendant||'').trim()||EMPRESA);
-      if(!totals[sched]) totals[sched]={agendado:0,atendido:0};
-      if(!totals[att])   totals[att]  ={agendado:0,atendido:0};
-      totals[sched].agendado+=base*PCT_SCHEDULER;
-      totals[att].atendido  +=base*PCT_ATTENDANT;
+      inc(sched,'agendado', base*PCT_SCHEDULER);
+      inc(att,  'atendido', base*PCT_ATTENDANT);
+      inc(EMPRESA,'empresa', base*PCT_EMPRESA);
     }
     return Object.entries(totals)
-      .map(([name,v])=>({name,agendado:Math.round(v.agendado),atendido:Math.round(v.atendido),value:Math.round(v.agendado+v.atendido)}))
+      .map(([name,v])=>({name,agendado:Math.round(v.agendado),atendido:Math.round(v.atendido),empresa:Math.round(v.empresa||0),value:Math.round(v.agendado+v.atendido+(v.empresa||0))}))
       .filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
   },[visibleSales,prices]);
 
@@ -3317,6 +3317,7 @@ function ChartsTab({ history, prices }) {
                     <div style={{display:'flex',gap:16,fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>
                       {d.agendado>0&&<span>Agendó <b style={{color:'var(--ink-dim)'}}>{fmt$(d.agendado)}</b></span>}
                       {d.atendido>0&&<span>Atendió <b style={{color:'var(--ink-dim)'}}>{fmt$(d.atendido)}</b></span>}
+                      {d.empresa>0&&<span>Empresa <b style={{color:'var(--ink-dim)'}}>{fmt$(d.empresa)}</b></span>}
                     </div>
                   </div>
                   );
