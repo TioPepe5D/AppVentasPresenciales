@@ -3025,14 +3025,17 @@ function ChartsTab({ history, prices }) {
     return Object.entries(GROUPS).map(([key,{name,g}])=>({key,name,grams:Math.round(g*10)/10})).filter(x=>x.grams>0).sort((a,b)=>b.grams-a.grams);
   },[visibleSales]);
 
-  // KPIs derivados directamente de timeData — siempre consistente con el gráfico de barras
+  // KPIs desde visibleSales — se actualiza con focusKey
   const kpis = useMemo(()=>{
-    const ventas=timeData.reduce((s,d)=>s+d.total,0);
-    const ganancia=timeData.reduce((s,d)=>s+d.ganancia,0);
-    const count=timeData.reduce((s,d)=>s+d.count,0);
+    let ventas=0,ganancia=0,count=0;
+    for(const q of visibleSales){
+      ventas+=Number(q.total)||0;
+      ganancia+=quoteCostAndProfit(q,prices).profit;
+      count++;
+    }
     const margen=ventas>0?Math.round(ganancia/ventas*100):0;
-    return {ventas,count,ganancia,margen,ticket:count?Math.round(ventas/count):0};
-  },[timeData]);
+    return {ventas,count,ganancia,margen};
+  },[visibleSales,prices]);
 
   const salesRef=useRef(null);
   const timeDataRef=useRef(timeData);
@@ -3116,7 +3119,6 @@ function ChartsTab({ history, prices }) {
             <div className="chart-kpi"><div className="chart-kpi-label">Ventas</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ventas>=1e6?(kpis.ventas/1e6).toFixed(1)+'M':kpis.ventas>=1000?Math.round(kpis.ventas/1000)+'K':fmtCLP(kpis.ventas)}</div><div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div></div>
             <div className="chart-kpi"><div className="chart-kpi-label">Ganancia</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${kpis.ganancia>=1e6?(kpis.ganancia/1e6).toFixed(1)+'M':kpis.ganancia>=1000?Math.round(kpis.ganancia/1000)+'K':fmtCLP(Math.abs(kpis.ganancia))}</div><div className="chart-kpi-sub">Neta</div></div>
             <div className="chart-kpi"><div className="chart-kpi-label">Margen</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.margen>=30?'var(--gold-2)':kpis.margen>=15?'var(--ink)':'var(--danger)'}}>{kpis.margen}%</div><div className="chart-kpi-sub">Bruto</div></div>
-            <div className="chart-kpi"><div className="chart-kpi-label">Ticket</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ticket>=1000?Math.round(kpis.ticket/1000)+'K':fmtCLP(kpis.ticket)}</div><div className="chart-kpi-sub">Promedio</div></div>
           </div>
           <div className="chart-card">
             <div className="chart-head">
