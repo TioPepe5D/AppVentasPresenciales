@@ -353,12 +353,7 @@
     border-color:rgba(var(--accent-rgb),.28);border-top-color:var(--gold);
     box-shadow:0 4px 20px rgba(var(--accent-rgb),.13),0 1px 6px rgba(0,0,0,.1);
   }
-  .q-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-  .q-status{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
-  .q-status.ok{background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25);color:#6ee7b7}
-  .q-status.pend{background:var(--bg-2);border:1px solid var(--line);color:var(--ink-mute)}
-  .q-dot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0}
-  .quote-name{font-size:18px;font-weight:700;letter-spacing:.005em;margin-bottom:10px;color:var(--ink)}
+  .quote-name{font-size:18px;font-weight:700;letter-spacing:.005em;color:var(--ink)}
   .quote-name em{color:var(--ink-mute);font-weight:400;font-size:14px;font-style:italic}
   .quote-date{font-family:var(--mono);font-size:10px;color:var(--ink-mute);letter-spacing:.07em;white-space:nowrap}
   .quote-lines{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
@@ -2293,17 +2288,11 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
           {filtered.map(h => (
             <div className={`quote${h.concretada ? ' q-ok' : ''}`} key={h.id}>
 
-              {/* ── top row: status badge + date ── */}
-              <div className="q-top">
-                <span className={`q-status ${h.concretada ? 'ok' : 'pend'}`}>
-                  <span className="q-dot"/>
-                  {h.concretada ? 'Concretada' : 'Pendiente'}
-                </span>
-                <div className="quote-date">{fmtDate(h.at)}</div>
+              {/* ── header: name + date ── */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,marginBottom:10}}>
+                <div className="quote-name" style={{margin:0}}>{h.client || <em>Sin nombre</em>}</div>
+                <div className="quote-date" style={{flexShrink:0}}>{fmtDate(h.at)}</div>
               </div>
-
-              {/* ── client name ── */}
-              <div className="quote-name">{h.client || <em>Sin nombre</em>}</div>
 
               {/* ── product chips ── */}
               <div className="quote-lines">
@@ -2339,8 +2328,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                 })}
               </div>
 
-              {/* ── staff section ── */}
-              {(h.scheduler || h.attendant) && (
+              {/* ── staff section: agendó + atendió + cobró ── */}
+              {(h.scheduler || h.attendant || h.pago) && (
                 <>
                   <div className="q-divider"/>
                   <div className="quote-staff">
@@ -2362,6 +2351,17 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                         </span>
                       </span>
                     )}
+                    {h.pago && (
+                      <span className="q-person">
+                        <span className="q-avatar" style={{background:'rgba(110,231,183,.15)',borderColor:'rgba(110,231,183,.3)',color:'#6ee7b7'}}>
+                          {initials(normName(h.pago))}
+                        </span>
+                        <span className="q-pinfo">
+                          <span className="q-role">Cobró</span>
+                          <span className="q-pname">{normName(h.pago)}</span>
+                        </span>
+                      </span>
+                    )}
                   </div>
                 </>
               )}
@@ -2370,7 +2370,6 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
               <div className="quote-foot">
                 <div>
                   <div className="quote-total"><span className="currency">CLP</span>${fmtCLP(h.total)}</div>
-                  {h.pago && <div className="quote-pago">Pago: <b>{normName(h.pago)}</b></div>}
                 </div>
                 <div className="quote-actions">
                   <button className="icon-btn" onClick={()=>onShare(h)} aria-label="Compartir"><Icon name="share" size={14}/></button>
