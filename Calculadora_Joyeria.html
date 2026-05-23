@@ -2224,17 +2224,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
   const hasFilters = filterAttendant || filterScheduler || filterPago;
 
-  const ChipSelect = ({ label, value, options, onChange }) => (
-    <div style={{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}}>
-      <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',color:'var(--ink-mute)',textTransform:'uppercase',whiteSpace:'nowrap'}}>{label}</span>
-      {options.map(name => (
-        <button key={name}
-          onClick={() => onChange(value === name ? '' : name)}
-          style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,padding:'3px 9px',borderRadius:999,border:`1px solid ${value===name?'var(--gold)':'var(--line)'}`,background:value===name?'rgba(var(--accent-rgb),.15)':'transparent',color:value===name?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',transition:'all .15s'}}
-        >{name}</button>
-      ))}
-    </div>
-  );
+  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',flex:1,minWidth:0,cursor:'pointer'};
 
   return (
     <div className="fade-in">
@@ -2247,14 +2237,29 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
       {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0) && (
-        <div style={{padding:'8px 14px 4px',display:'flex',flexDirection:'column',gap:8}}>
-          {uniqueNames.att.length>0 && <ChipSelect label="Atendió" value={filterAttendant} options={uniqueNames.att} onChange={setFilterAttendant}/>}
-          {uniqueNames.sched.length>0 && <ChipSelect label="Agendó" value={filterScheduler} options={uniqueNames.sched} onChange={setFilterScheduler}/>}
-          {uniqueNames.pago.length>0 && <ChipSelect label="Pago" value={filterPago} options={uniqueNames.pago} onChange={setFilterPago}/>}
+        <div style={{padding:'6px 14px 8px',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+          {uniqueNames.att.length>0 && (
+            <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
+              <option value="">Atendió: Todos</option>
+              {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+          )}
+          {uniqueNames.sched.length>0 && (
+            <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
+              <option value="">Agendó: Todos</option>
+              {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+          )}
+          {uniqueNames.pago.length>0 && (
+            <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
+              <option value="">Pago: Todos</option>
+              {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
+          )}
           {hasFilters && (
             <button onClick={()=>{setFilterAttendant('');setFilterScheduler('');setFilterPago('');}}
-              style={{alignSelf:'flex-start',fontFamily:'var(--mono)',fontSize:9,fontWeight:700,padding:'3px 10px',borderRadius:999,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',letterSpacing:'.1em',textTransform:'uppercase'}}
-            >✕ limpiar filtros</button>
+              style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
+            >✕</button>
           )}
         </div>
       )}
@@ -2564,7 +2569,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
   };
 
   // ── etiqueta de selector ──
-  const selectorLabel = { daily:'Día', weekly:'Semana', monthly:'Mes', quarterly:'Trimestre', semester:'Semestre', yearly:'Año' }[period] || 'Mes';
+  const selectorLabel = { daily:'Día', weekly:'Semana', monthly:'Mes', yearly:'Año' }[period] || 'Mes';
 
   return (
     <div className="fade-in">
@@ -2576,7 +2581,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
 
         {/* ── selector de período ── */}
         <div style={{padding:'10px 14px 0',display:'flex',gap:6,flexWrap:'wrap'}}>
-          {[['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['quarterly','Trimestral'],['semester','Semestral'],['yearly','Anual']].map(([k,lbl]) => (
+          {[['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl]) => (
             <button key={k}
               className={`chart-period-btn${period===k?' active':''}`}
               onClick={()=>setPeriod(k)}
@@ -2592,7 +2597,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
               <select value={activeKey} onChange={e => setActive(e.target.value)}>
                 {activeList.map(k => (
                   <option key={k} value={k}>
-                    {period==='daily'?dayLabel(k):period==='weekly'?weekLabel(k):period==='yearly'?yearLabel(k):period==='quarterly'?quarterLabel(k):period==='semester'?semesterLabel(k):monthLabel(k)}
+                    {period==='daily'?dayLabel(k):period==='weekly'?weekLabel(k):period==='yearly'?yearLabel(k):monthLabel(k)}
                   </option>
                 ))}
               </select>
@@ -2917,12 +2922,10 @@ function TweaksPanel({ prices, setPrices, onClose }){
 
 // ---------- Charts Tab ----------
 const CHART_PERIODS = [
-  { key:'day',      label:'Diario'     },
-  { key:'week',     label:'Semanal'    },
-  { key:'month',    label:'Mensual'    },
-  { key:'quarter',  label:'Trimestral' },
-  { key:'semester', label:'Semestral'  },
-  { key:'year',     label:'Anual'      },
+  { key:'day',   label:'Diario'  },
+  { key:'week',  label:'Semanal' },
+  { key:'month', label:'Mensual' },
+  { key:'year',  label:'Anual'   },
 ];
 
 function ChartsTab({ history, prices }) {
@@ -2938,11 +2941,9 @@ function ChartsTab({ history, prices }) {
 
   const getBucketKey = useCallback((q) => {
     const d=new Date(q.at);
-    if(period==='day')      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if(period==='week')     { const m=getMon(d); return `${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`; }
-    if(period==='month')    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if(period==='quarter')  return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3)+1}`;
-    if(period==='semester') return `${d.getFullYear()}-H${d.getMonth()<6?1:2}`;
+    if(period==='day')   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(period==='week')  { const m=getMon(d); return `${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`; }
+    if(period==='month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     return String(d.getFullYear());
   }, [period]);
 
@@ -2955,10 +2956,6 @@ function ChartsTab({ history, prices }) {
       for(let i=11;i>=0;i--){const d=new Date(now.getTime()-i*7*864e5);const m=getMon(d);add(`${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`,`${m.getDate()}/${m.getMonth()+1}`);}
     }else if(period==='month'){
       for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));}
-    }else if(period==='quarter'){
-      for(let i=7;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);const q=Math.floor(d.getMonth()/3)+1;add(`${d.getFullYear()}-Q${q}`,`Q${q}'${String(d.getFullYear()).slice(2)}`);}
-    }else if(period==='semester'){
-      for(let i=3;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i*6,1);const h=d.getMonth()<6?1:2;add(`${d.getFullYear()}-H${h}`,`H${h}'${String(d.getFullYear()).slice(2)}`);}
     }else{
       const years=new Set(history.filter(q=>q.concretada).map(q=>new Date(q.at).getFullYear()));years.add(now.getFullYear());
       [...years].sort().forEach(y=>add(String(y),String(y)));
@@ -3107,32 +3104,23 @@ function ChartsTab({ history, prices }) {
   const hasData=history.some(q=>q.concretada);
   return (
     <div className="fade-in">
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <div style={{fontFamily:'var(--mono)',fontSize:10,letterSpacing:'.18em',color:'var(--ink-mute)',textTransform:'uppercase'}}>Período</div>
-        <div className="chart-period-sel" style={{flexWrap:'wrap',gap:4}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+        <div className="chart-period-sel">
           {CHART_PERIODS.map(p=>(
             <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
           ))}
         </div>
+        {hasData && (
+          <select
+            value={focusKey||''}
+            onChange={e=>setFocusKey(e.target.value||null)}
+            style={{fontFamily:'var(--mono)',fontSize:11,padding:'4px 8px',borderRadius:8,border:`1px solid ${focusKey?'var(--gold)':'var(--line)'}`,background:'var(--panel)',color:focusKey?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',flex:'1 1 120px',minWidth:100,maxWidth:180}}
+          >
+            <option value="">Ver: Todos</option>
+            {getBuckets().map(b=><option key={b.key} value={b.key}>{b.label}</option>)}
+          </select>
+        )}
       </div>
-      {/* ── selector de período específico ── */}
-      {hasData && (
-        <div style={{overflowX:'auto',paddingBottom:4,marginBottom:8}}>
-          <div style={{display:'flex',gap:5,width:'max-content',alignItems:'center'}}>
-            <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.14em',color:'var(--ink-mute)',textTransform:'uppercase',whiteSpace:'nowrap',paddingRight:2}}>Ver</span>
-            <button
-              onClick={()=>setFocusKey(null)}
-              style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'4px 11px',borderRadius:999,border:`1px solid ${!focusKey?'var(--gold)':'var(--line)'}`,background:!focusKey?'rgba(var(--accent-rgb),.18)':'transparent',color:!focusKey?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}
-            >Todos</button>
-            {getBuckets().map(b=>(
-              <button key={b.key}
-                onClick={()=>setFocusKey(focusKey===b.key?null:b.key)}
-                style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,padding:'4px 11px',borderRadius:999,border:`1px solid ${focusKey===b.key?'var(--gold)':'var(--line)'}`,background:focusKey===b.key?'rgba(var(--accent-rgb),.18)':'transparent',color:focusKey===b.key?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap',transition:'all .15s'}}
-              >{b.label}</button>
-            ))}
-          </div>
-        </div>
-      )}
       {!hasData?(
         <div className="card"><div className="chart-empty"><div style={{fontSize:36,marginBottom:12}}>📊</div><p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p><p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p></div></div>
       ):(
