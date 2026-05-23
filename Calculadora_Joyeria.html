@@ -3035,6 +3035,24 @@ function ChartsTab({ history, prices }) {
   },[timeData]);
 
   const salesRef=useRef(null);
+  const timeDataRef=useRef(timeData);
+  useEffect(()=>{ timeDataRef.current=timeData; },[timeData]);
+
+  const handleChartTap=useCallback((e)=>{
+    const canvas=salesRef.current; if(!canvas) return;
+    const data=timeDataRef.current; if(!data.length) return;
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    const clientX=e.touches?e.changedTouches[0].clientX:e.clientX;
+    const cssX=clientX-rect.left;
+    const W=canvas.offsetWidth,padL=10,padR=10,chartW=W-padL-padR;
+    const slotW=chartW/data.length;
+    const i=Math.floor((cssX-padL)/slotW);
+    if(i>=0&&i<data.length){
+      const key=data[i].key;
+      setFocusKey(prev=>prev===key?null:key);
+    }
+  },[]);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
@@ -3084,15 +3102,10 @@ function ChartsTab({ history, prices }) {
             <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
           ))}
         </div>
-        {hasData && (
-          <select
-            value={focusKey||''}
-            onChange={e=>setFocusKey(e.target.value||null)}
-            style={{fontFamily:'var(--mono)',fontSize:11,padding:'4px 8px',borderRadius:8,border:`1px solid ${focusKey?'var(--gold)':'var(--line)'}`,background:'var(--panel)',color:focusKey?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',flex:'1 1 120px',minWidth:100,maxWidth:180}}
-          >
-            <option value="">Ver: Todos</option>
-            {getBuckets().map(b=><option key={b.key} value={b.key}>{b.label}</option>)}
-          </select>
+        {focusKey&&(
+          <button onClick={()=>setFocusKey(null)}
+            style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:8,border:'1px solid var(--gold)',background:'rgba(var(--accent-rgb),.12)',color:'var(--gold-2)',cursor:'pointer',whiteSpace:'nowrap'}}
+          >✕ Ver todos</button>
         )}
       </div>
       {!hasData?(
@@ -3106,8 +3119,18 @@ function ChartsTab({ history, prices }) {
             <div className="chart-kpi"><div className="chart-kpi-label">Ticket</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ticket>=1000?Math.round(kpis.ticket/1000)+'K':fmtCLP(kpis.ticket)}</div><div className="chart-kpi-sub">Promedio</div></div>
           </div>
           <div className="chart-card">
-            <div className="chart-head"><h3>Venta <em>vs</em> Ganancia</h3><span className="eyebrow">CLP</span></div>
-            <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={salesRef} style={{height:220}}/></div></div>
+            <div className="chart-head">
+              <h3>Venta <em>vs</em> Ganancia</h3>
+              <span className="eyebrow">{focusKey?'toca de nuevo para ver todos':'toca una barra'}</span>
+            </div>
+            <div className="chart-body">
+              <div className="chart-canvas-wrap">
+                <canvas ref={salesRef} style={{height:220,cursor:'pointer',touchAction:'none'}}
+                  onClick={handleChartTap}
+                  onTouchEnd={handleChartTap}
+                />
+              </div>
+            </div>
           </div>
           {personData.length>0&&(()=>{
             const PAL=['#c9a84c','#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8','#a78bfa'];
