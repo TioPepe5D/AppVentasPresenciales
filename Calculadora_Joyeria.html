@@ -2993,9 +2993,14 @@ function ChartsTab({ history, prices }) {
     for(const q of visibleSales){
       const base=Math.max(0,quoteCostAndProfit(q,prices).profit);
       const sched=normName((q.scheduler||'').trim()||EMPRESA),att=normName((q.attendant||'').trim()||EMPRESA);
-      totals[sched]=(totals[sched]||0)+base*PCT_SCHEDULER; totals[att]=(totals[att]||0)+base*PCT_ATTENDANT;
+      if(!totals[sched]) totals[sched]={agendado:0,atendido:0};
+      if(!totals[att])   totals[att]  ={agendado:0,atendido:0};
+      totals[sched].agendado+=base*PCT_SCHEDULER;
+      totals[att].atendido  +=base*PCT_ATTENDANT;
     }
-    return Object.entries(totals).map(([name,value])=>({name,value:Math.round(value)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
+    return Object.entries(totals)
+      .map(([name,v])=>({name,agendado:Math.round(v.agendado),atendido:Math.round(v.atendido),value:Math.round(v.agendado+v.atendido)}))
+      .filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
   },[visibleSales,prices]);
 
   const gramsData = useMemo(()=>{
@@ -3029,7 +3034,7 @@ function ChartsTab({ history, prices }) {
     return {ventas,count,ganancia,margen,ticket:count?Math.round(ventas/count):0};
   },[timeData]);
 
-  const salesRef=useRef(null),donutRef=useRef(null),hbarRef=useRef(null);
+  const salesRef=useRef(null);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
@@ -3068,37 +3073,6 @@ function ChartsTab({ history, prices }) {
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
   },[timeData,focusKey]);
 
-  useEffect(()=>{
-    const canvas=donutRef.current; if(!canvas||!personData.length) return;
-    const dpr=window.devicePixelRatio||1,SIZE=Math.min(canvas.offsetWidth,220);
-    canvas.width=SIZE*dpr;canvas.height=SIZE*dpr;
-    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,SIZE,SIZE);
-    const total=personData.reduce((s,d)=>s+d.value,0),cx=SIZE/2,cy=SIZE/2,outer=SIZE*0.42,inner=SIZE*0.26;
-    const PAL=[getCssVar('--gold-2'),getCssVar('--gold'),'#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8'];
-    let ang=-Math.PI/2;
-    personData.forEach((d,i)=>{const sl=(d.value/total)*2*Math.PI;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,outer,ang,ang+sl);ctx.closePath();ctx.fillStyle=PAL[i%PAL.length];ctx.fill();ang+=sl;});
-    ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.fillStyle=getCssVar('--panel');ctx.fill();
-    ctx.fillStyle=getCssVar('--ink-dim');ctx.font=`700 ${Math.round(SIZE*0.065)}px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(total>=1e6?`$${(total/1e6).toFixed(1)}M`:`$${Math.round(total/1000)}K`,cx,cy);
-  },[personData]);
-
-  useEffect(()=>{
-    const canvas=hbarRef.current; if(!canvas||!gramsData.length) return;
-    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,ROW_H=36,PAD_V=12,PAD_H=14,H=gramsData.length*ROW_H+PAD_V*2;
-    canvas.width=W*dpr;canvas.height=H*dpr;
-    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
-    const maxG=Math.max(...gramsData.map(d=>d.grams),1),labelW=Math.min(W*0.38,140),barArea=W-labelW-PAD_H*2-50;
-    const gold2=getCssVar('--gold-2'),gold=getCssVar('--gold'),inkDim=getCssVar('--ink-dim'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
-    gramsData.forEach((d,i)=>{
-      const y=PAD_V+i*ROW_H,barH=ROW_H*0.45,barY=y+(ROW_H-barH)/2,barW=Math.max(4,(d.grams/maxG)*barArea),r2=barH/2;
-      const name=d.name.replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu,'').trim();
-      ctx.fillStyle=inkDim;ctx.font=`500 10px 'Montserrat',sans-serif`;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(name,PAD_H+labelW,y+ROW_H/2);
-      ctx.fillStyle=lineC;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barArea,barH,r2);ctx.fill();
-      const grad=ctx.createLinearGradient(PAD_H+labelW+8,0,PAD_H+labelW+8+barW,0);grad.addColorStop(0,gold2);grad.addColorStop(1,gold);
-      ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barW,barH,r2);ctx.fill();
-      ctx.fillStyle=inkMute;ctx.font=`600 9px 'Montserrat',sans-serif`;ctx.textAlign='left';ctx.fillText(`${d.grams}g`,PAD_H+labelW+8+barArea+6,y+ROW_H/2);
-    });
-  },[gramsData]);
 
 
   const hasData=history.some(q=>q.concretada);
@@ -3135,23 +3109,71 @@ function ChartsTab({ history, prices }) {
             <div className="chart-head"><h3>Venta <em>vs</em> Ganancia</h3><span className="eyebrow">CLP</span></div>
             <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={salesRef} style={{height:220}}/></div></div>
           </div>
-          {personData.length>0&&(
+          {personData.length>0&&(()=>{
+            const PAL=['#c9a84c','#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8','#a78bfa'];
+            const tot=personData.reduce((s,d)=>s+d.value,0);
+            const fmt$=v=>v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${Math.round(v/1000)}K`:`$${fmtCLP(v)}`;
+            return(
             <div className="chart-card">
-              <div className="chart-head"><h3>Comisiones <em>por persona</em></h3><span className="eyebrow">Equipo</span></div>
-              <div className="chart-body" style={{display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
-                <div style={{flexShrink:0}}><div className="chart-canvas-wrap" style={{width:180,maxWidth:'100%'}}><canvas ref={donutRef} style={{width:180,height:180}}/></div></div>
-                <div className="chart-legend" style={{flex:1,minWidth:120,flexDirection:'column',gap:8}}>
-                  {personData.map((d,i)=>{const PAL=['var(--gold-2)','var(--gold)','#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8'],tot=personData.reduce((s,x)=>s+x.value,0),pct=tot?Math.round(d.value/tot*100):0;return(<div key={d.name} className="chart-legend-item"><span className="chart-legend-dot" style={{background:PAL[i%PAL.length]}}/><span style={{flex:1}}>{d.name}</span><span style={{color:'var(--gold-2)',fontWeight:700}}>{pct}%</span><span style={{color:'var(--ink-mute)',marginLeft:6}}>${d.value>=1000?Math.round(d.value/1000)+'K':fmtCLP(d.value)}</span></div>);})}
-                </div>
+              <div className="chart-head"><h3>Comisiones <em>por persona</em></h3><span className="eyebrow">{fmt$(tot)} total equipo</span></div>
+              <div style={{padding:'4px 0 8px'}}>
+                {personData.map((d,i)=>{
+                  const pct=tot?Math.round(d.value/tot*100):0;
+                  const color=PAL[i%PAL.length];
+                  return(
+                  <div key={d.name} style={{padding:'10px 16px',borderBottom:'1px solid var(--line)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:'var(--ink-dim)'}}>{d.name}</span>
+                      <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                        <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>{pct}%</span>
+                        <span style={{fontFamily:'var(--mono)',fontSize:14,fontWeight:700,color}}>{fmt$(d.value)}</span>
+                      </div>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden',marginBottom:5}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3}}/>
+                    </div>
+                    <div style={{display:'flex',gap:16,fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>
+                      {d.agendado>0&&<span>Agendó <b style={{color:'var(--ink-dim)'}}>{fmt$(d.agendado)}</b></span>}
+                      {d.atendido>0&&<span>Atendió <b style={{color:'var(--ink-dim)'}}>{fmt$(d.atendido)}</b></span>}
+                    </div>
+                  </div>
+                  );
+                })}
               </div>
             </div>
-          )}
-          {gramsData.length>0&&(
+            );
+          })()}
+          {gramsData.length>0&&(()=>{
+            const totG=gramsData.reduce((s,d)=>s+d.grams,0);
+            const CAT_COLORS={cadena:'#c9a84c',micro:'#6ee7b7',italiana:'#f4a380',gf18k:'#fb923c'};
+            return(
             <div className="chart-card">
-              <div className="chart-head"><h3>Gramos <em>por categoría</em></h3><span className="eyebrow">g vendidos · período seleccionado</span></div>
-              <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={hbarRef}/></div></div>
+              <div className="chart-head"><h3>Producto <em>más vendido</em></h3><span className="eyebrow">{Math.round(totG*10)/10}g total</span></div>
+              <div style={{padding:'4px 0 8px'}}>
+                {gramsData.map((d,i)=>{
+                  const pct=totG?Math.round(d.grams/totG*100):0;
+                  const color=CAT_COLORS[d.key]||'#818cf8';
+                  const label=d.name.replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu,'').trim();
+                  const emoji=d.name.match(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu)?.[0]||'';
+                  return(
+                  <div key={d.key} style={{padding:'10px 16px',borderBottom:'1px solid var(--line)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:'var(--ink-dim)'}}>{emoji} {label}</span>
+                      <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                        <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>{pct}%</span>
+                        <span style={{fontFamily:'var(--mono)',fontSize:14,fontWeight:700,color}}>{d.grams}g</span>
+                      </div>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3}}/>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
     </div>
