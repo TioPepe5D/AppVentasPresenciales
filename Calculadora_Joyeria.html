@@ -687,13 +687,13 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ---------- Data ----------
 const DEFAULT_PRICES = {
-  "collar_pulsera_mujer_925": { "name": "Collar y Pul Mujer 💁🏼‍♀️", "material": "SL 925", "cost": 450, "costKilero": 400, "prices": [1900, 950, 800, 650, 550] },
-  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "material": "SL 925", "cost": 450, "costKilero": 400, "prices": [1500, 750, 700, 500, 450] },
-  "aros_colgantes_925": { "name": "Aros y Colgantes ✨", "material": "SL 925", "cost": 650, "costKilero": 550, "prices": [3600, 1200, 1000, 900, 850] },
-  "anillos_925": { "name": "Anillos 💍", "material": "SL 925", "cost": 650, "costKilero": 550, "prices": [4500, 1500, 1250, 1100, 1000] },
-  "collar_pulsera_micro": { "name": "Collar y Pul Micro 💎", "material": "Micro", "cost": 650, "costKilero": 550, "prices": [2000, 1000, 900, 800, 750] },
+  "collar_pulsera_mujer_925": { "name": "Collar y Pul Mujer 💁🏼‍♀️", "material": "SL 925", "cost": 450, "costKilero": 405, "prices": [1900, 950, 800, 650, 550] },
+  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "material": "SL 925", "cost": 450, "costKilero": 405, "prices": [1500, 750, 700, 500, 450] },
+  "aros_colgantes_925": { "name": "Aros y Colgantes ✨", "material": "SL 925", "cost": 650, "costKilero": 570, "prices": [3600, 1200, 1000, 900, 850] },
+  "anillos_925": { "name": "Anillos 💍", "material": "SL 925", "cost": 650, "costKilero": 570, "prices": [4500, 1500, 1250, 1100, 1000] },
+  "collar_pulsera_micro": { "name": "Collar y Pul Micro 💎", "material": "Micro", "cost": 650, "costKilero": 570, "prices": [2000, 1000, 900, 800, 750] },
   "italiana_925": { "name": "Italiana 🇮🇹", "material": "925", "cost": 2000, "costKilero": 2000, "prices": [5500, 2750, 2500, 2250, 2000] },
-  "gf_18k": { "name": "GF 18 K ⚜️", "material": "GF 18K", "cost": 1400, "costKilero": 1300, "prices": [5000, 2500, 2250, 2000, 1800] }
+  "gf_18k": { "name": "GF 18 K ⚜️", "material": "GF 18K", "cost": 1600, "costKilero": 1500, "prices": [5000, 2500, 2250, 2000, 1800] }
 };
 
 const CATEGORY_ORDER = Object.keys(DEFAULT_PRICES);
@@ -2883,392 +2883,243 @@ function TweaksPanel({ prices, setPrices, onClose }){
 ═══════════════════════════════════════ */
 
 // ---------- Charts Tab ----------
-function ChartsTab({ history, prices }) {
-  const [period, setPeriod] = useState(6); // last N months
+const CHART_PERIODS = [
+  { key:'day',      label:'Diario'     },
+  { key:'week',     label:'Semanal'    },
+  { key:'month',    label:'Mensual'    },
+  { key:'quarter',  label:'Trimestral' },
+  { key:'semester', label:'Semestral'  },
+  { key:'year',     label:'Anual'      },
+];
 
-  // ── helpers ──
+function ChartsTab({ history, prices }) {
+  const [period, setPeriod] = useState('month');
   const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  // ── datos: ventas por mes ──
-  const monthlyData = useMemo(() => {
-    const now = new Date();
-    const months = [];
-    for (let i = period - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      months.push({ key, label: d.toLocaleDateString('es-CL', { month: 'short', year: '2-digit' }) });
-    }
-    const sales = {};
-    const counts = {};
-    for (const q of history) {
-      if (!q.concretada) continue;
-      const mk = monthKey(q.at);
-      sales[mk] = (sales[mk] || 0) + (Number(q.total) || 0);
-      counts[mk] = (counts[mk] || 0) + 1;
-    }
-    return months.map(m => ({ ...m, total: sales[m.key] || 0, count: counts[m.key] || 0 }));
-  }, [history, period]);
+  const isoWeek = (d) => { const j=new Date(d.getFullYear(),0,4); const w=new Date(j); w.setDate(j.getDate()-((j.getDay()+6)%7)); return Math.floor((d-w)/(7*864e5))+1; };
+  const getMon = (d) => { const day=d.getDay(),diff=day===0?-6:1-day; return new Date(d.getFullYear(),d.getMonth(),d.getDate()+diff); };
 
-  // ── datos: por persona ──
-  const personData = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - period + 1, 1).getTime();
-    const totals = {};
-    for (const q of history) {
-      if (!q.concretada || q.at < cutoff) continue;
-      const total = Number(q.total) || 0;
-      const { profit } = quoteCostAndProfit(q, prices);
-      const base = Math.max(0, profit);
-      const sched = normName((q.scheduler || '').trim() || EMPRESA);
-      const att   = normName((q.attendant  || '').trim() || EMPRESA);
-      totals[sched] = (totals[sched] || 0) + base * PCT_SCHEDULER;
-      totals[att]   = (totals[att]   || 0) + base * PCT_ATTENDANT;
-    }
-    return Object.entries(totals)
-      .map(([name, value]) => ({ name, value: Math.round(value) }))
-      .filter(x => x.value > 0)
-      .sort((a, b) => b.value - a.value);
-  }, [history, prices, period]);
+  const getBucketKey = useCallback((q) => {
+    const d=new Date(q.at);
+    if(period==='day')      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(period==='week')     { const m=getMon(d); return `${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`; }
+    if(period==='month')    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if(period==='quarter')  return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3)+1}`;
+    if(period==='semester') return `${d.getFullYear()}-H${d.getMonth()<6?1:2}`;
+    return String(d.getFullYear());
+  }, [period]);
 
-  // ── datos: gramos por categoría ──
-  const gramsData = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - period + 1, 1).getTime();
-    const LOTE_CAT_MAP = { cadena: 'collar_pulsera_mujer_925', micro: 'collar_pulsera_micro', italiana: 'italiana_925', gf18k: 'gf_18k' };
-    const grams = {};
-    for (const q of history) {
-      if (!q.concretada || q.at < cutoff) continue;
-      for (const l of (q.lines || [])) {
-        if (l.category === INSUMO_KEY) continue;
-        if (l.category === LOTE_KEY) {
-          const gm = l.loteGramsMap || {};
-          for (const [typeKey, catKey] of Object.entries(LOTE_CAT_MAP)) {
-            const g = Number(gm[typeKey]) || 0;
-            if (g > 0) grams[catKey] = (grams[catKey] || 0) + g;
-          }
-        } else {
-          const g = Number(l.grams) || 0;
-          if (g > 0) grams[l.category] = (grams[l.category] || 0) + g;
-        }
+  const getBuckets = useCallback(() => {
+    const now=new Date(),buckets=[],seen=new Set();
+    const add=(key,label)=>{ if(!seen.has(key)){seen.add(key);buckets.push({key,label});} };
+    if(period==='day'){
+      for(let i=29;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,`${d.getDate()}/${d.getMonth()+1}`);}
+    }else if(period==='week'){
+      for(let i=11;i>=0;i--){const d=new Date(now.getTime()-i*7*864e5);const m=getMon(d);add(`${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`,`${m.getDate()}/${m.getMonth()+1}`);}
+    }else if(period==='month'){
+      for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));}
+    }else if(period==='quarter'){
+      for(let i=7;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i*3,1);const q=Math.floor(d.getMonth()/3)+1;add(`${d.getFullYear()}-Q${q}`,`Q${q}'${String(d.getFullYear()).slice(2)}`);}
+    }else if(period==='semester'){
+      for(let i=3;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i*6,1);const h=d.getMonth()<6?1:2;add(`${d.getFullYear()}-H${h}`,`H${h}'${String(d.getFullYear()).slice(2)}`);}
+    }else{
+      const years=new Set(history.filter(q=>q.concretada).map(q=>new Date(q.at).getFullYear()));years.add(now.getFullYear());
+      [...years].sort().forEach(y=>add(String(y),String(y)));
+    }
+    return buckets;
+  }, [period,history]);
+
+  const cutoff = useMemo(()=>{
+    const now=new Date();
+    if(period==='day')      return new Date(now.getFullYear(),now.getMonth(),now.getDate()-29).getTime();
+    if(period==='week')     return new Date(now.getTime()-12*7*864e5).getTime();
+    if(period==='month')    return new Date(now.getFullYear(),now.getMonth()-11,1).getTime();
+    if(period==='quarter')  return new Date(now.getFullYear(),now.getMonth()-21,1).getTime();
+    if(period==='semester') return new Date(now.getFullYear(),now.getMonth()-23,1).getTime();
+    return 0;
+  },[period]);
+
+  const timeData = useMemo(()=>{
+    const buckets=getBuckets(),map={};
+    for(const b of buckets) map[b.key]={...b,total:0,ganancia:0,count:0};
+    for(const q of history){
+      if(!q.concretada) continue;
+      const key=getBucketKey(q); if(!map[key]) continue;
+      map[key].total+=Number(q.total)||0;
+      map[key].ganancia+=quoteCostAndProfit(q,prices).profit;
+      map[key].count++;
+    }
+    return buckets.map(b=>map[b.key]);
+  },[history,prices,period,getBuckets,getBucketKey]);
+
+  const personData = useMemo(()=>{
+    const totals={};
+    for(const q of history){
+      if(!q.concretada||q.at<cutoff) continue;
+      const base=Math.max(0,quoteCostAndProfit(q,prices).profit);
+      const sched=normName((q.scheduler||'').trim()||EMPRESA),att=normName((q.attendant||'').trim()||EMPRESA);
+      totals[sched]=(totals[sched]||0)+base*PCT_SCHEDULER; totals[att]=(totals[att]||0)+base*PCT_ATTENDANT;
+    }
+    return Object.entries(totals).map(([name,value])=>({name,value:Math.round(value)})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value);
+  },[history,prices,cutoff]);
+
+  const gramsData = useMemo(()=>{
+    const LMAP={cadena:'collar_pulsera_mujer_925',micro:'collar_pulsera_micro',italiana:'italiana_925',gf18k:'gf_18k'},grams={};
+    for(const q of history){
+      if(!q.concretada||q.at<cutoff) continue;
+      for(const l of(q.lines||[])){
+        if(l.category===INSUMO_KEY) continue;
+        if(l.category===LOTE_KEY){const gm=l.loteGramsMap||{};for(const[tk,ck]of Object.entries(LMAP)){const g=Number(gm[tk])||0;if(g>0)grams[ck]=(grams[ck]||0)+g;}}
+        else{const g=Number(l.grams)||0;if(g>0)grams[l.category]=(grams[l.category]||0)+g;}
       }
     }
-    return Object.entries(grams)
-      .map(([key, g]) => ({ key, name: prices[key]?.name || key, grams: Math.round(g * 10) / 10 }))
-      .filter(x => x.grams > 0)
-      .sort((a, b) => b.grams - a.grams);
-  }, [history, prices, period]);
+    return Object.entries(grams).map(([key,g])=>({key,name:prices[key]?.name||key,grams:Math.round(g*10)/10})).filter(x=>x.grams>0).sort((a,b)=>b.grams-a.grams);
+  },[history,prices,cutoff]);
 
-  // ── KPIs ──
-  const kpis = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getFullYear(), now.getMonth() - period + 1, 1).getTime();
-    let ventas = 0, count = 0, ganancia = 0;
-    for (const q of history) {
-      if (!q.concretada || q.at < cutoff) continue;
-      ventas += Number(q.total) || 0;
-      const { profit } = quoteCostAndProfit(q, prices);
-      ganancia += profit;
-      count++;
-    }
-    return { ventas, count, ganancia, ticket: count ? Math.round(ventas / count) : 0 };
-  }, [history, prices, period]);
+  const weekdayData = useMemo(()=>{
+    const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],counts=new Array(7).fill(0),tots=new Array(7).fill(0);
+    for(const q of history){if(!q.concretada||q.at<cutoff) continue;const dow=(new Date(q.at).getDay()+6)%7;counts[dow]++;tots[dow]+=Number(q.total)||0;}
+    return DAYS.map((name,i)=>({name,count:counts[i],total:tots[i]}));
+  },[history,cutoff]);
 
-  // ── Bar Chart (ventas mensuales) ──
-  const barRef = useRef(null);
-  useEffect(() => {
-    const canvas = barRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth;
-    const H = 200;
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+  const kpis = useMemo(()=>{
+    let ventas=0,count=0,ganancia=0;
+    for(const q of history){if(!q.concretada||q.at<cutoff) continue;ventas+=Number(q.total)||0;ganancia+=quoteCostAndProfit(q,prices).profit;count++;}
+    const margen=ventas>0?Math.round(ganancia/ventas*100):0;
+    return {ventas,count,ganancia,margen,ticket:count?Math.round(ventas/count):0};
+  },[history,prices,cutoff]);
 
-    const gold    = getCssVar('--gold');
-    const gold2   = getCssVar('--gold-2');
-    const line    = getCssVar('--line');
-    const inkMute = getCssVar('--ink-mute');
-    const inkDim  = getCssVar('--ink-dim');
-    const bg2     = getCssVar('--bg-2');
+  const salesRef=useRef(null),donutRef=useRef(null),hbarRef=useRef(null),weekdayRef=useRef(null);
 
-    ctx.clearRect(0, 0, W, H);
-    const maxVal = Math.max(...monthlyData.map(m => m.total), 1);
-    const pad = { top: 20, right: 10, bottom: 38, left: 10 };
-    const chartW = W - pad.left - pad.right;
-    const chartH = H - pad.top - pad.bottom;
-    const n = monthlyData.length;
-    const barW = Math.max(4, (chartW / n) * 0.55);
-    const gap   = chartW / n;
-
-    // Grid lines
-    ctx.strokeStyle = line;
-    ctx.lineWidth = 1;
-    [0, 0.25, 0.5, 0.75, 1].forEach(t => {
-      const y = pad.top + chartH * (1 - t);
-      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+  useEffect(()=>{
+    const canvas=salesRef.current; if(!canvas) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=220;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    const gold=getCssVar('--gold'),gold2=getCssVar('--gold-2'),lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute'),inkDim=getCssVar('--ink-dim');
+    ctx.clearRect(0,0,W,H);
+    const pad={top:20,right:10,bottom:44,left:10},chartW=W-pad.left-pad.right,chartH=H-pad.top-pad.bottom;
+    const n=timeData.length; if(!n) return;
+    const maxVal=Math.max(...timeData.map(d=>d.total),1),slotW=chartW/n,barW=Math.max(3,slotW*0.3),gap=Math.max(1,barW*0.25);
+    ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
+    [0,.25,.5,.75,1].forEach(t=>{const y=pad.top+chartH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    timeData.forEach((d,i)=>{
+      const cx=pad.left+slotW*i+slotW/2;
+      const drawBar=(val,xOff,color)=>{
+        const bH=val>0?Math.max(3,(val/maxVal)*chartH):0; if(!bH) return;
+        const x=cx+xOff,y=pad.top+chartH-bH,r=Math.min(3,barW/2);
+        const grad=ctx.createLinearGradient(0,y,0,pad.top+chartH);grad.addColorStop(0,color);grad.addColorStop(1,color+'99');
+        ctx.fillStyle=grad;ctx.beginPath();
+        ctx.moveTo(x+r,y);ctx.lineTo(x+barW-r,y);ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
+        ctx.lineTo(x+barW,pad.top+chartH);ctx.lineTo(x,pad.top+chartH);ctx.lineTo(x,y+r);
+        ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+      };
+      drawBar(d.total,-barW-gap/2,gold2);
+      drawBar(Math.max(0,d.ganancia),gap/2,'#4ade80');
+      const showLabel=n<=14||i%Math.ceil(n/14)===0||i===n-1;
+      if(showLabel){ctx.fillStyle=inkMute;ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
+      if(d.total>0&&n<=6){const lbl=d.total>=1e6?`${(d.total/1e6).toFixed(1)}M`:`${Math.round(d.total/1000)}K`;ctx.fillStyle=inkDim;ctx.font=`600 8px 'Montserrat',sans-serif`;ctx.textAlign='center';const bH=(d.total/maxVal)*chartH;ctx.fillText(lbl,cx-barW/2-gap/2,pad.top+chartH-bH-5);}
     });
+    const ly=H-16;ctx.font=`500 8px 'Montserrat',sans-serif`;
+    ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-7,10,7);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+13,ly);
+    ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
+  },[timeData]);
 
-    monthlyData.forEach((m, i) => {
-      const x = pad.left + gap * i + gap / 2;
-      const barH = m.total ? Math.max(4, (m.total / maxVal) * chartH) : 0;
-      const y = pad.top + chartH - barH;
+  useEffect(()=>{
+    const canvas=donutRef.current; if(!canvas||!personData.length) return;
+    const dpr=window.devicePixelRatio||1,SIZE=Math.min(canvas.offsetWidth,220);
+    canvas.width=SIZE*dpr;canvas.height=SIZE*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,SIZE,SIZE);
+    const total=personData.reduce((s,d)=>s+d.value,0),cx=SIZE/2,cy=SIZE/2,outer=SIZE*0.42,inner=SIZE*0.26;
+    const PAL=[getCssVar('--gold-2'),getCssVar('--gold'),'#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8'];
+    let ang=-Math.PI/2;
+    personData.forEach((d,i)=>{const sl=(d.value/total)*2*Math.PI;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,outer,ang,ang+sl);ctx.closePath();ctx.fillStyle=PAL[i%PAL.length];ctx.fill();ang+=sl;});
+    ctx.beginPath();ctx.arc(cx,cy,inner,0,Math.PI*2);ctx.fillStyle=getCssVar('--panel');ctx.fill();
+    ctx.fillStyle=getCssVar('--ink-dim');ctx.font=`700 ${Math.round(SIZE*0.065)}px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(total>=1e6?`$${(total/1e6).toFixed(1)}M`:`$${Math.round(total/1000)}K`,cx,cy);
+  },[personData]);
 
-      // gradient bar
-      if (barH > 0) {
-        const grad = ctx.createLinearGradient(0, y, 0, pad.top + chartH);
-        grad.addColorStop(0, gold2);
-        grad.addColorStop(1, gold);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        const r = Math.min(5, barW / 2);
-        ctx.moveTo(x - barW/2 + r, y);
-        ctx.lineTo(x + barW/2 - r, y);
-        ctx.quadraticCurveTo(x + barW/2, y, x + barW/2, y + r);
-        ctx.lineTo(x + barW/2, pad.top + chartH);
-        ctx.lineTo(x - barW/2, pad.top + chartH);
-        ctx.lineTo(x - barW/2, y + r);
-        ctx.quadraticCurveTo(x - barW/2, y, x - barW/2 + r, y);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // label
-      ctx.fillStyle = inkMute;
-      ctx.font = `500 9px 'Montserrat', sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(m.label.toUpperCase(), x, H - 6);
-
-      // value above bar
-      if (m.total > 0) {
-        ctx.fillStyle = inkDim;
-        ctx.font = `600 9px 'Montserrat', sans-serif`;
-        const label = m.total >= 1000000 ? `$${(m.total/1000000).toFixed(1)}M` : m.total >= 1000 ? `$${Math.round(m.total/1000)}K` : `$${m.total}`;
-        ctx.fillText(label, x, y - 5);
-      }
+  useEffect(()=>{
+    const canvas=hbarRef.current; if(!canvas||!gramsData.length) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,ROW_H=36,PAD_V=12,PAD_H=14,H=gramsData.length*ROW_H+PAD_V*2;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+    const maxG=Math.max(...gramsData.map(d=>d.grams),1),labelW=Math.min(W*0.38,140),barArea=W-labelW-PAD_H*2-50;
+    const gold2=getCssVar('--gold-2'),gold=getCssVar('--gold'),inkDim=getCssVar('--ink-dim'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
+    gramsData.forEach((d,i)=>{
+      const y=PAD_V+i*ROW_H,barH=ROW_H*0.45,barY=y+(ROW_H-barH)/2,barW=Math.max(4,(d.grams/maxG)*barArea),r2=barH/2;
+      const name=d.name.replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu,'').trim();
+      ctx.fillStyle=inkDim;ctx.font=`500 10px 'Montserrat',sans-serif`;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(name,PAD_H+labelW,y+ROW_H/2);
+      ctx.fillStyle=lineC;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barArea,barH,r2);ctx.fill();
+      const grad=ctx.createLinearGradient(PAD_H+labelW+8,0,PAD_H+labelW+8+barW,0);grad.addColorStop(0,gold2);grad.addColorStop(1,gold);
+      ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barW,barH,r2);ctx.fill();
+      ctx.fillStyle=inkMute;ctx.font=`600 9px 'Montserrat',sans-serif`;ctx.textAlign='left';ctx.fillText(`${d.grams}g`,PAD_H+labelW+8+barArea+6,y+ROW_H/2);
     });
-  }, [monthlyData]);
+  },[gramsData]);
 
-  // ── Donut Chart (por persona) ──
-  const donutRef = useRef(null);
-  useEffect(() => {
-    const canvas = donutRef.current;
-    if (!canvas || personData.length === 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    const SIZE = Math.min(canvas.offsetWidth, 220);
-    canvas.width  = SIZE * dpr;
-    canvas.height = SIZE * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, SIZE, SIZE);
-
-    const total = personData.reduce((s, d) => s + d.value, 0);
-    const cx = SIZE / 2, cy = SIZE / 2;
-    const outer = SIZE * 0.42, inner = SIZE * 0.26;
-    const PALETTE = [
-      getCssVar('--gold-2'), getCssVar('--gold'),
-      '#6ee7b7', '#f4a380', '#fb923c', '#f472b6', '#22d3ee', '#818cf8'
-    ];
-    const line = getCssVar('--line');
-
-    let startAngle = -Math.PI / 2;
-    personData.forEach((d, i) => {
-      const slice = (d.value / total) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, outer, startAngle, startAngle + slice);
-      ctx.closePath();
-      ctx.fillStyle = PALETTE[i % PALETTE.length];
-      ctx.fill();
-      startAngle += slice;
+  useEffect(()=>{
+    const canvas=weekdayRef.current; if(!canvas) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,ROW_H=30,PAD_V=8,PAD_H=14,H=7*ROW_H+PAD_V*2;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,W,H);
+    const maxT=Math.max(...weekdayData.map(d=>d.total),1),labelW=36,barArea=W-labelW-PAD_H*2-70;
+    const gold2=getCssVar('--gold-2'),gold=getCssVar('--gold'),inkDim=getCssVar('--ink-dim'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
+    weekdayData.forEach((d,i)=>{
+      const y=PAD_V+i*ROW_H,barH=ROW_H*0.45,barY=y+(ROW_H-barH)/2,barW=d.count>0?Math.max(4,(d.total/maxT)*barArea):0,r2=barH/2;
+      ctx.fillStyle=inkDim;ctx.font=`600 10px 'Montserrat',sans-serif`;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(d.name,PAD_H+labelW,y+ROW_H/2);
+      ctx.fillStyle=lineC;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barArea,barH,r2);ctx.fill();
+      if(barW>0){const grad=ctx.createLinearGradient(PAD_H+labelW+8,0,PAD_H+labelW+8+barW,0);grad.addColorStop(0,gold2);grad.addColorStop(1,gold);ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect(PAD_H+labelW+8,barY,barW,barH,r2);ctx.fill();}
+      const vl=d.total>=1e6?`${(d.total/1e6).toFixed(1)}M`:d.total>=1000?`${Math.round(d.total/1000)}K`:`${fmtCLP(d.total)}`;
+      ctx.fillStyle=inkMute;ctx.font=`600 9px 'Montserrat',sans-serif`;ctx.textAlign='left';ctx.fillText(d.count>0?`${d.count}v · $${vl}`:'—',PAD_H+labelW+8+barArea+6,y+ROW_H/2);
     });
+  },[weekdayData]);
 
-    // inner hole
-    ctx.beginPath();
-    ctx.arc(cx, cy, inner, 0, Math.PI * 2);
-    ctx.fillStyle = getCssVar('--panel');
-    ctx.fill();
-
-    // center text
-    ctx.fillStyle = getCssVar('--ink-dim');
-    ctx.font = `700 ${Math.round(SIZE * 0.065)}px 'Montserrat', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const label = total >= 1000000 ? `$${(total/1000000).toFixed(1)}M` : `$${Math.round(total/1000)}K`;
-    ctx.fillText(label, cx, cy);
-  }, [personData]);
-
-  // ── Horizontal Bar Chart (gramos por cat) ──
-  const hbarRef = useRef(null);
-  useEffect(() => {
-    const canvas = hbarRef.current;
-    if (!canvas || gramsData.length === 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.offsetWidth;
-    const ROW_H = 36, PAD_V = 12, PAD_H = 14;
-    const H = gramsData.length * ROW_H + PAD_V * 2;
-    canvas.width  = W * dpr;
-    canvas.height = H * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, W, H);
-
-    const maxG = Math.max(...gramsData.map(d => d.grams), 1);
-    const labelW = Math.min(W * 0.38, 140);
-    const barArea = W - labelW - PAD_H * 2 - 50;
-    const gold2 = getCssVar('--gold-2');
-    const gold  = getCssVar('--gold');
-    const inkDim  = getCssVar('--ink-dim');
-    const inkMute = getCssVar('--ink-mute');
-    const line    = getCssVar('--line');
-
-    gramsData.forEach((d, i) => {
-      const y = PAD_V + i * ROW_H;
-      const barH = ROW_H * 0.45;
-      const barY = y + (ROW_H - barH) / 2;
-      const barW = Math.max(4, (d.grams / maxG) * barArea);
-
-      // label
-      ctx.fillStyle = inkDim;
-      ctx.font = `500 10px 'Montserrat', sans-serif`;
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      // strip emoji for canvas
-      const name = d.name.replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu, '').trim();
-      ctx.fillText(name, PAD_H + labelW, y + ROW_H / 2);
-
-      // bar background
-      ctx.fillStyle = line;
-      ctx.beginPath();
-      const r2 = barH / 2;
-      ctx.roundRect(PAD_H + labelW + 8, barY, barArea, barH, r2);
-      ctx.fill();
-
-      // bar fill
-      const grad = ctx.createLinearGradient(PAD_H + labelW + 8, 0, PAD_H + labelW + 8 + barW, 0);
-      grad.addColorStop(0, gold2);
-      grad.addColorStop(1, gold);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.roundRect(PAD_H + labelW + 8, barY, barW, barH, r2);
-      ctx.fill();
-
-      // grams value
-      ctx.fillStyle = inkMute;
-      ctx.font = `600 9px 'Montserrat', sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`${d.grams}g`, PAD_H + labelW + 8 + barArea + 6, y + ROW_H / 2);
-    });
-  }, [gramsData]);
-
-  const totalVentas = kpis.ventas;
-  const hasData = history.some(q => q.concretada);
-
+  const hasData=history.some(q=>q.concretada);
   return (
     <div className="fade-in">
-      {/* Selector de período */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <div style={{fontFamily:'var(--mono)',fontSize:10,letterSpacing:'.18em',color:'var(--ink-mute)',textTransform:'uppercase'}}>Período</div>
-        <div className="chart-period-sel">
-          {[3,6,12].map(n => (
-            <button key={n} className={`chart-period-btn${period===n?' active':''}`} onClick={()=>setPeriod(n)}>
-              {n}M
-            </button>
+        <div className="chart-period-sel" style={{flexWrap:'wrap',gap:4}}>
+          {CHART_PERIODS.map(p=>(
+            <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
           ))}
         </div>
       </div>
-
-      {!hasData ? (
-        <div className="card">
-          <div className="chart-empty">
-            <div style={{fontSize:36,marginBottom:12}}>📊</div>
-            <p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p>
-            <p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p>
-          </div>
-        </div>
-      ) : (
+      {!hasData?(
+        <div className="card"><div className="chart-empty"><div style={{fontSize:36,marginBottom:12}}>📊</div><p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p><p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p></div></div>
+      ):(
         <div className="charts-grid">
-
-          {/* KPIs */}
           <div className="chart-kpi-row">
-            <div className="chart-kpi">
-              <div className="chart-kpi-label">Ventas</div>
-              <div className="chart-kpi-value" style={{fontSize:14}}>${totalVentas>=1000000?(totalVentas/1000000).toFixed(1)+'M':totalVentas>=1000?Math.round(totalVentas/1000)+'K':fmtCLP(totalVentas)}</div>
-              <div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div>
-            </div>
-            <div className="chart-kpi">
-              <div className="chart-kpi-label">Ganancia</div>
-              <div className="chart-kpi-value" style={{fontSize:14,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${kpis.ganancia>=1000000?(kpis.ganancia/1000000).toFixed(1)+'M':kpis.ganancia>=1000?Math.round(kpis.ganancia/1000)+'K':fmtCLP(Math.abs(kpis.ganancia))}</div>
-              <div className="chart-kpi-sub">Neta</div>
-            </div>
-            <div className="chart-kpi">
-              <div className="chart-kpi-label">Ticket</div>
-              <div className="chart-kpi-value" style={{fontSize:14}}>${kpis.ticket>=1000?Math.round(kpis.ticket/1000)+'K':fmtCLP(kpis.ticket)}</div>
-              <div className="chart-kpi-sub">Promedio</div>
-            </div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Ventas</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ventas>=1e6?(kpis.ventas/1e6).toFixed(1)+'M':kpis.ventas>=1000?Math.round(kpis.ventas/1000)+'K':fmtCLP(kpis.ventas)}</div><div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div></div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Ganancia</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${kpis.ganancia>=1e6?(kpis.ganancia/1e6).toFixed(1)+'M':kpis.ganancia>=1000?Math.round(kpis.ganancia/1000)+'K':fmtCLP(Math.abs(kpis.ganancia))}</div><div className="chart-kpi-sub">Neta</div></div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Margen</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.margen>=30?'var(--gold-2)':kpis.margen>=15?'var(--ink)':'var(--danger)'}}>{kpis.margen}%</div><div className="chart-kpi-sub">Bruto</div></div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Ticket</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ticket>=1000?Math.round(kpis.ticket/1000)+'K':fmtCLP(kpis.ticket)}</div><div className="chart-kpi-sub">Promedio</div></div>
           </div>
-
-          {/* Bar chart ventas */}
           <div className="chart-card">
-            <div className="chart-head">
-              <h3>Ventas <em>mensuales</em></h3>
-              <span className="eyebrow">CLP</span>
-            </div>
-            <div className="chart-body">
-              <div className="chart-canvas-wrap">
-                <canvas ref={barRef} style={{height:200}}/>
-              </div>
-            </div>
+            <div className="chart-head"><h3>Venta <em>vs</em> Ganancia</h3><span className="eyebrow">CLP</span></div>
+            <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={salesRef} style={{height:220}}/></div></div>
           </div>
-
-          {/* Donut por persona */}
-          {personData.length > 0 && (
+          {personData.length>0&&(
             <div className="chart-card">
-              <div className="chart-head">
-                <h3>Comisiones <em>por persona</em></h3>
-                <span className="eyebrow">Equipo</span>
-              </div>
+              <div className="chart-head"><h3>Comisiones <em>por persona</em></h3><span className="eyebrow">Equipo</span></div>
               <div className="chart-body" style={{display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
-                <div style={{flexShrink:0}}>
-                  <div className="chart-canvas-wrap" style={{width:180,maxWidth:'100%'}}>
-                    <canvas ref={donutRef} style={{width:180,height:180}}/>
-                  </div>
-                </div>
+                <div style={{flexShrink:0}}><div className="chart-canvas-wrap" style={{width:180,maxWidth:'100%'}}><canvas ref={donutRef} style={{width:180,height:180}}/></div></div>
                 <div className="chart-legend" style={{flex:1,minWidth:120,flexDirection:'column',gap:8}}>
-                  {personData.map((d,i) => {
-                    const PALETTE = ['var(--gold-2)','var(--gold)','#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8'];
-                    const total = personData.reduce((s,x)=>s+x.value,0);
-                    const pct = total ? Math.round(d.value/total*100) : 0;
-                    return (
-                      <div key={d.name} className="chart-legend-item">
-                        <span className="chart-legend-dot" style={{background:PALETTE[i%PALETTE.length]}}/>
-                        <span style={{flex:1}}>{d.name}</span>
-                        <span style={{color:'var(--gold-2)',fontWeight:700}}>{pct}%</span>
-                        <span style={{color:'var(--ink-mute)',marginLeft:6}}>${d.value>=1000?Math.round(d.value/1000)+'K':fmtCLP(d.value)}</span>
-                      </div>
-                    );
-                  })}
+                  {personData.map((d,i)=>{const PAL=['var(--gold-2)','var(--gold)','#6ee7b7','#f4a380','#fb923c','#f472b6','#22d3ee','#818cf8'],tot=personData.reduce((s,x)=>s+x.value,0),pct=tot?Math.round(d.value/tot*100):0;return(<div key={d.name} className="chart-legend-item"><span className="chart-legend-dot" style={{background:PAL[i%PAL.length]}}/><span style={{flex:1}}>{d.name}</span><span style={{color:'var(--gold-2)',fontWeight:700}}>{pct}%</span><span style={{color:'var(--ink-mute)',marginLeft:6}}>${d.value>=1000?Math.round(d.value/1000)+'K':fmtCLP(d.value)}</span></div>);})}
                 </div>
               </div>
             </div>
           )}
-
-          {/* Horizontal bars gramos */}
-          {gramsData.length > 0 && (
+          {gramsData.length>0&&(
             <div className="chart-card">
-              <div className="chart-head">
-                <h3>Gramos <em>por categoría</em></h3>
-                <span className="eyebrow">g vendidos</span>
-              </div>
-              <div className="chart-body">
-                <div className="chart-canvas-wrap">
-                  <canvas ref={hbarRef}/>
-                </div>
-              </div>
+              <div className="chart-head"><h3>Gramos <em>por categoría</em></h3><span className="eyebrow">g vendidos</span></div>
+              <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={hbarRef}/></div></div>
             </div>
           )}
-
+          <div className="chart-card">
+            <div className="chart-head"><h3>Ventas por <em>día de semana</em></h3><span className="eyebrow">Actividad</span></div>
+            <div className="chart-body"><div className="chart-canvas-wrap"><canvas ref={weekdayRef}/></div></div>
+          </div>
         </div>
       )}
     </div>
@@ -3400,6 +3251,59 @@ function App(){
   const addLine   = () => setLines(ls => [...ls, { id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
   const removeLine = (id) => setLines(ls => ls.length > 1 ? ls.filter(l => l.id !== id) : ls);
   const updateLine = (id, patch) => setLines(ls => ls.map(l => l.id === id ? { ...l, ...patch } : l));
+
+  // ── Migración costos mayo 2026 ──
+  const [fixing, setFixing] = useState(false);
+  const fixCostsMayo = async () => {
+    const MAY1 = new Date('2026-05-01T00:00:00').getTime();
+    const MAY_COSTS = {
+      collar_pulsera_mujer_925:  { cost:450, costKilero:405 },
+      collar_pulsera_hombre_925: { cost:450, costKilero:405 },
+      aros_colgantes_925:        { cost:650, costKilero:570 },
+      anillos_925:               { cost:650, costKilero:570 },
+      collar_pulsera_micro:      { cost:650, costKilero:570 },
+      italiana_925:              { cost:2000,costKilero:2000},
+      gf_18k:                    { cost:1600,costKilero:1500},
+    };
+    const LOTE_MAP = { cadena:'collar_pulsera_mujer_925', micro:'collar_pulsera_micro', italiana:'italiana_925', gf18k:'gf_18k' };
+    const toFix = history.filter(q => q.at >= MAY1);
+    if (!toFix.length) { showToast('Sin ventas desde mayo 1'); return; }
+    setFixing(true);
+    let done = 0;
+    for (const q of toFix) {
+      const kilero = q.kilero || isKileroTier(q.tier || 0);
+      const snap = {};
+      let totalCost = 0;
+      for (const l of (q.lines||[])) {
+        if (l.category === INSUMO_KEY) { totalCost += (Number(l.insumoCost)||0)*(Number(l.insumoQty)||1); continue; }
+        if (l.category === LOTE_KEY) {
+          const gm = l.loteGramsMap||{};
+          for (const [tk,ck] of Object.entries(LOTE_MAP)) {
+            const g=Number(gm[tk])||0; if(!g) continue;
+            const c=MAY_COSTS[ck]?.[kilero?'costKilero':'cost']||0;
+            snap[ck]=c; totalCost+=c*g;
+          }
+          continue;
+        }
+        const costs=MAY_COSTS[l.category]; if(!costs) continue;
+        const c=kilero?costs.costKilero:costs.cost;
+        snap[l.category]=c; totalCost+=c*(Number(l.grams)||0);
+      }
+      const profit=(Number(q.total)||0)-totalCost;
+      await window.__FB.updateQuote(q.id, { costsSnap:snap, totalCost, profit });
+      done++;
+    }
+    // También actualizar precios en localStorage
+    setPrices(prev => {
+      const next = { ...prev };
+      for (const [k,v] of Object.entries(MAY_COSTS)) {
+        if (next[k]) next[k] = { ...next[k], cost:v.cost, costKilero:v.costKilero };
+      }
+      return next;
+    });
+    setFixing(false);
+    showToast(`✅ ${done} venta${done!==1?'s':''} corregida${done!==1?'s':''}`);
+  };
 
   const resetCalc = () => {
     setLines([{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
@@ -3623,6 +3527,17 @@ Total: $${fmtCLP(q.total)} CLP`;
       )}
       {adminOpen && isAdmin && (
         <AdminPanel currentUser={fbUser} onClose={()=>setAdminOpen(false)} />
+      )}
+
+      {isAdmin && (
+        <div style={{margin:'0 0 8px',padding:'8px 12px',background:'rgba(var(--accent-rgb),.07)',borderRadius:10,border:'1px solid var(--line)',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <span style={{fontFamily:'var(--mono)',fontSize:10,letterSpacing:'.15em',color:'var(--ink-mute)',textTransform:'uppercase',flex:1}}>Admin · Corrección costos</span>
+          <button
+            onClick={fixCostsMayo}
+            disabled={fixing}
+            style={{fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'5px 14px',borderRadius:999,border:'1px solid var(--gold)',background:'transparent',color:'var(--gold-2)',cursor:'pointer',opacity:fixing?0.5:1}}
+          >{fixing ? 'Corrigiendo…' : 'Corregir ventas mayo 1+'}</button>
+        </div>
       )}
 
       <nav className="tabs" role="tablist">
