@@ -345,18 +345,22 @@
   .history-search svg{flex-shrink:0;color:var(--ink-mute)}
 
   .quote{
-    padding:14px 14px;border-bottom:1px solid var(--line);
+    padding:14px 16px;border-radius:14px;background:var(--panel);
+    border:1px solid var(--line);border-left:3px solid var(--line);
+    transition:border-color .15s;
   }
-  .quote:last-child{border-bottom:0}
-  .quote-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+  .quote.q-ok{border-left-color:var(--gold)}
+  .quote-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px;flex-wrap:wrap}
   .quote-name{font-size:15px;font-weight:600;letter-spacing:.01em}
   .quote-name em{color:var(--ink-mute);font-weight:400;font-size:13px;font-style:normal}
   .quote-date{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-mute);letter-spacing:.1em;white-space:nowrap}
-  .quote-lines{font-size:13px;color:var(--ink-dim);margin:6px 0 10px;line-height:1.5}
-  .quote-lines .sep{color:var(--line-2);margin:0 6px}
-  .quote-staff{font-family:var(--mono);font-size:11px;color:var(--ink-mute);letter-spacing:.04em;margin:4px 0 0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-  .quote-staff b{color:var(--ink-dim);font-weight:600}
-  .quote-staff .sep{color:var(--line-2)}
+  .quote-staff{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0 0}
+  .q-badge{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink-mute)}
+  .q-badge b{color:var(--ink-dim);font-weight:600}
+  .quote-lines{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 12px}
+  .q-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--ink-dim);background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:3px 9px;line-height:1.4}
+  .q-grams{font-family:var(--mono);font-size:10px;color:var(--ink-mute)}
+  .q-price{font-family:var(--mono);font-size:10px;color:var(--ink-mute)}
 
   /* Reports */
   .report-summary{display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:8px;padding:8px 12px 14px}
@@ -2273,41 +2277,50 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
           </div>
         </div>
       ) : (
-        <div className="card">
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {filtered.map(h => (
-            <div className="quote" key={h.id}>
+            <div className={`quote${h.concretada ? ' q-ok' : ''}`} key={h.id}>
               <div className="quote-head">
-                <div className="quote-name">
-                  {h.client || <em>Sin cliente</em>}
-                </div>
+                <div className="quote-name">{h.client || <em>Sin cliente</em>}</div>
                 <div className="quote-date">{fmtDate(h.at)}</div>
               </div>
               {(h.scheduler || h.attendant) && (
                 <div className="quote-staff">
-                  {h.scheduler && <span>Agendó: <b>{normName(h.scheduler)}</b></span>}
-                  {h.scheduler && h.attendant && <span className="sep">·</span>}
-                  {h.attendant && <span>Atendió: <b>{normName(h.attendant)}</b></span>}
+                  {h.scheduler && <span className="q-badge">Agendó <b>{normName(h.scheduler)}</b></span>}
+                  {h.attendant && <span className="q-badge">Atendió <b>{normName(h.attendant)}</b></span>}
                 </div>
               )}
               <div className="quote-lines">
-                {h.lines.map((l, i) => (
-                  <React.Fragment key={i}>
-                    {i > 0 && <span className="sep">·</span>}
-                    {l.category === INSUMO_KEY
-                      ? (() => {
-                          const esRegalo = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) === 0 : (l.insumoPrice || 0) === 0;
-                          const displayVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) * (Number(l.insumoQty)||1) : (l.insumoPrice || 0);
-                          return <>{l.insumoName || 'Insumo'} 💎 {esRegalo
-                            ? <span style={{fontStyle:'normal',fontFamily:'var(--mono)',fontSize:10,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',letterSpacing:'.06em'}}>🎁 REGALO</span>
-                            : <span style={{fontStyle:'normal',fontFamily:'var(--mono)',fontSize:11}}>${fmtCLP(displayVal)}</span>
-                          }</>;
-                        })()
-                      : l.category === LOTE_KEY
-                      ? <>📦 Lote{l.loteName ? ` ${l.loteName}` : ''}{l.grams ? ` ${l.grams}g` : ''} <span style={{fontStyle:'normal',fontFamily:'var(--mono)',fontSize:11}}>${fmtCLP(l.lotePrice || 0)}</span></>
-                      : <>{(prices[l.category] && prices[l.category].name) || l.category} <span style={{fontStyle:'normal',fontFamily:'var(--mono)',fontSize:11}}>{l.grams}g</span></>
-                    }
-                  </React.Fragment>
-                ))}
+                {h.lines.map((l, i) => {
+                  if (l.category === INSUMO_KEY) {
+                    const esRegalo = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) === 0 : (l.insumoPrice || 0) === 0;
+                    const displayVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) * (Number(l.insumoQty)||1) : (l.insumoPrice || 0);
+                    return (
+                      <span key={i} className="q-chip">
+                        {l.insumoName || 'Insumo'} 💎{' '}
+                        {esRegalo
+                          ? <span style={{fontFamily:'var(--mono)',fontSize:10,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',letterSpacing:'.06em'}}>🎁 REGALO</span>
+                          : <span className="q-price">${fmtCLP(displayVal)}</span>
+                        }
+                      </span>
+                    );
+                  }
+                  if (l.category === LOTE_KEY) {
+                    return (
+                      <span key={i} className="q-chip">
+                        📦 {l.loteName || 'Lote'}
+                        {l.grams ? <span className="q-grams"> {l.grams}g</span> : null}
+                        <span className="q-price">${fmtCLP(l.lotePrice || 0)}</span>
+                      </span>
+                    );
+                  }
+                  return (
+                    <span key={i} className="q-chip">
+                      {(prices[l.category] && prices[l.category].name) || l.category}
+                      <span className="q-grams">{l.grams}g</span>
+                    </span>
+                  );
+                })}
               </div>
               <div className="quote-foot">
                 <div>
