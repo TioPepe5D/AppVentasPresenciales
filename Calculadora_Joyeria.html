@@ -3687,19 +3687,27 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     const p = prices;
     const linesText = q.lines.map(l => {
       if (l.category === INSUMO_KEY) {
-        const qty = Number(l.insumoQty) || 1;
-        return `• ${qty} ${l.insumoName || 'Insumo'} 💎 — $${fmtCLP(l.insumoPrice || 0)}`;
+        const qty     = Number(l.insumoQty) || 1;
+        const name    = l.insumoName || 'Insumo';
+        const unitVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) : (l.insumoPrice || 0);
+        const total   = unitVal * qty;
+        const qtyStr  = qty > 1 ? `${qty}× ` : '';
+        return total === 0
+          ? `• ${qtyStr}${name} 💎  🎁 Regalo`
+          : `• ${qtyStr}${name} 💎  $${fmtCLP(total)}`;
       }
       if (l.category === LOTE_KEY) {
-        const nombre = l.loteName ? l.loteName : 'Lote';
-        return `• ${nombre} — $${fmtCLP(Number(l.lotePrice) || 0)}`;
+        const nombre = l.loteName || 'Lote';
+        return `• 📦 ${nombre}  →  $${fmtCLP(Number(l.lotePrice) || 0)}`;
       }
       const cat   = p[l.category];
       const price = Number(l.customPrice) || 0;
-      return `• ${cat ? cat.name : l.category} — ${l.grams}g × $${fmtCLP(price)} = $${fmtCLP(price * l.grams)}`;
+      const total = Math.round(price * Number(l.grams));
+      return `• ${cat ? cat.name : l.category}  ${l.grams}g × $${fmtCLP(price)}/g  →  $${fmtCLP(total)}`;
     }).join('\n');
+
     const text =
-`✨ Detalles De Venta${q.client ? ' · Venta de ' + q.client : ''}
+`✨ Detalle de ${q.client || 'cliente'}
 ${fmtDate(q.at)}
 
 ${linesText}
