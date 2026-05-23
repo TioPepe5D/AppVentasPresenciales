@@ -752,13 +752,13 @@ const NAME_MAP = {"Cristopher":"Cris","Cristópher":"Cris","Benjamín":"Benja","
 const normName = (n) => NAME_MAP[n] || n;
 const initials = (n) => n.split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';
 const CAT_CHIP_STYLE = {
-  collar_pulsera_mujer_925:  {background:'rgba(201,168,76,.13)',borderColor:'rgba(201,168,76,.32)'},
-  collar_pulsera_hombre_925: {background:'rgba(201,168,76,.13)',borderColor:'rgba(201,168,76,.32)'},
-  collar_pulsera_micro:      {background:'rgba(110,231,183,.1)',borderColor:'rgba(110,231,183,.28)'},
-  aros_colgantes_925:        {background:'rgba(110,231,183,.1)',borderColor:'rgba(110,231,183,.28)'},
-  anillos_925:               {background:'rgba(110,231,183,.1)',borderColor:'rgba(110,231,183,.28)'},
-  italiana_925:              {background:'rgba(244,163,128,.1)',borderColor:'rgba(244,163,128,.3)'},
-  gf_18k:                    {background:'rgba(251,146,60,.1)', borderColor:'rgba(251,146,60,.3)'},
+  collar_pulsera_mujer_925:  {background:'rgba(160,160,160,.1)', borderColor:'rgba(160,160,160,.28)'},
+  collar_pulsera_hombre_925: {background:'rgba(160,160,160,.1)', borderColor:'rgba(160,160,160,.28)'},
+  collar_pulsera_micro:      {background:'rgba(56,189,248,.1)',  borderColor:'rgba(56,189,248,.3)'},
+  aros_colgantes_925:        {background:'rgba(56,189,248,.1)',  borderColor:'rgba(56,189,248,.3)'},
+  anillos_925:               {background:'rgba(56,189,248,.1)',  borderColor:'rgba(56,189,248,.3)'},
+  italiana_925:              {background:'rgba(74,222,128,.1)',  borderColor:'rgba(74,222,128,.3)'},
+  gf_18k:                    {background:'rgba(201,168,76,.13)', borderColor:'rgba(201,168,76,.32)'},
 };
 const EMPRESA = "Empresa";
 const PCT_SCHEDULER = 0.35;
