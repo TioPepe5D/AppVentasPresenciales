@@ -2502,31 +2502,216 @@ const semesterLabel = (k) => { const [y,h]=k.split('-H'); return `${h}°S ${y}`;
 
 function ReportsTab({ history, prices, onToggleConcretada }){
   const [period, setPeriod] = useState('monthly');
+  const [navIdx, setNavIdx] = useState(0);
+  const [salesOpen, setSalesOpen] = useState(false);
 
-  // ── listas de períodos disponibles ──
-  const allDays = useMemo(() => {
-    const set = new Set(history.map(q => dayKey(q.at)));
-    set.add(dayKey(Date.now()));
-    return Array.from(set).sort().reverse();
-  }, [history]);
+  useEffect(()=>{ setNavIdx(0); setSalesOpen(false); },[period]);
 
-  const allWeeks = useMemo(() => {
-    const set = new Set(history.map(q => weekKey(q.at)));
-    set.add(weekKey(Date.now()));
-    return Array.from(set).sort().reverse();
-  }, [history]);
+  const allDays = useMemo(()=>{ const s=new Set(history.map(q=>dayKey(q.at))); s.add(dayKey(Date.now())); return [...s].sort().reverse(); },[history]);
+  const allWeeks = useMemo(()=>{ const s=new Set(history.map(q=>weekKey(q.at))); s.add(weekKey(Date.now())); return [...s].sort().reverse(); },[history]);
+  const allMonths = useMemo(()=>{ const s=new Set(history.map(q=>monthKey(q.at))); s.add(monthKey(Date.now())); return [...s].sort().reverse(); },[history]);
+  const allYears = useMemo(()=>{ const s=new Set(history.map(q=>yearKey(q.at))); s.add(yearKey(Date.now())); return [...s].sort().reverse(); },[history]);
 
-  const allMonths = useMemo(() => {
-    const set = new Set(history.map(q => monthKey(q.at)));
-    set.add(monthKey(Date.now()));
-    return Array.from(set).sort().reverse();
-  }, [history]);
+  const { activeList, labelFn, keyFn, periodName } = useMemo(()=>{
+    if(period==='daily')  return { activeList:allDays,   labelFn:dayLabel,   keyFn:dayKey,   periodName:'Diario'  };
+    if(period==='weekly') return { activeList:allWeeks,  labelFn:weekLabel,  keyFn:weekKey,  periodName:'Semanal' };
+    if(period==='yearly') return { activeList:allYears,  labelFn:yearLabel,  keyFn:yearKey,  periodName:'Anual'   };
+    return                       { activeList:allMonths, labelFn:monthLabel, keyFn:monthKey, periodName:'Mensual' };
+  },[period,allDays,allWeeks,allMonths,allYears]);
 
-  const allQuarters = useMemo(() => {
-    const set = new Set(history.map(q => quarterKey(q.at)));
-    set.add(quarterKey(Date.now()));
-    return Array.from(set).sort().reverse();
-  }, [history]);
+  const boundedIdx = Math.min(navIdx, Math.max(0, activeList.length-1));
+  const activeKey   = activeList[boundedIdx] || '';
+  const activeLabel = activeKey ? labelFn(activeKey) : '';
+
+  const periodQuotes = useMemo(()=>history.filter(q=>keyFn(q.at)===activeKey&&q.concretada),[history,keyFn,activeKey]);
+
+  const summary = useMemo(()=>{
+    const byPerson={};
+    let totalVentas=0,totalCostos=0,totalGanancia=0;
+    const gramsByGroup={cadena:0,micro:0,italiana:0,gf18k:0};
+    const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
+    const inc=(n,k,v)=>{ byPerson[n]=byPerson[n]||{agendado:0,atendido:0,empresa:0}; byPerson[n][k]+=v; };
+    for(const q of periodQuotes){
+      const total=Number(q.total)||0;
+      const {totalCost,profit}=quoteCostAndProfit(q,prices);
+      const base=Math.max(0,profit);
+      totalVentas+=total; totalCostos+=totalCost; totalGanancia+=profit;
+      inc(normName((q.scheduler||'').trim()||EMPRESA),'agendado',base*PCT_SCHEDULER);
+      inc(normName((q.attendant||'').trim()||EMPRESA),'atendido',base*PCT_ATTENDANT);
+      inc(EMPRESA,'empresa',base*PCT_EMPRESA);
+      for(const l of(q.lines||[])){
+        if(l.category===LOTE_KEY){ const gm=l.loteGramsMap||{}; for(const k of['cadena','micro','italiana','gf18k']) gramsByGroup[k]+=(Number(gm[k])||0); }
+        else if(catToGroup[l.category]) gramsByGroup[catToGroup[l.category]]+=Number(l.grams)||0;
+      }
+    }
+    const pagosByPerson={};
+    for(const q of periodQuotes){ const who=normName((q.pago||'').trim()); if(who){ pagosByPerson[who]=(pagosByPerson[who]||0)+(Number(q.total)||0); } }
+    const rows=Object.entries(byPerson).map(([name,v])=>({name,...v,comision:v.agendado+v.atendido+v.empresa})).filter(r=>r.comision>0).sort((a,b)=>b.comision-a.comision);
+    const totalComisionEquipo=rows.reduce((s,r)=>s+r.agendado+r.atendido,0);
+    const totalEmpresa=rows.reduce((s,r)=>s+r.empresa,0);
+    const margen=totalVentas>0?Math.round(totalGanancia/totalVentas*100):0;
+    return {rows,totalVentas,totalCostos,totalGanancia,totalComisionEquipo,totalEmpresa,gramsByGroup,margen};
+  },[periodQuotes,prices]);
+
+  const exportCSV = () => {
+    const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
+    const header=["Fecha","Cliente","Agendó","Atendió","Gramos Total","G. Cadena","G. Micro","G. Italiana","G. GF 18K","Venta","Costo","Ganancia","Com. Agendó (35%)","Com. Atendió (35%)","Com. Empresa (30%)"];
+    const r1=x=>{const n=Math.round((x||0)*10)/10; return n===0?'':n.toLocaleString('es-CL',{maximumFractionDigits:1});};
+    const b0=n=>n===0?'':n;
+    const rows=periodQuotes.map(q=>{
+      const {totalCost,profit}=quoteCostAndProfit(q,prices);
+      const base=Math.max(0,profit);
+      const d=new Date(q.at);
+      const fecha=d.toLocaleDateString('es-CL')+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+      const g={cadena:0,micro:0,italiana:0,gf18k:0};
+      for(const l of(q.lines||[])){ if(l.category===LOTE_KEY){const gm=l.loteGramsMap||{};for(const k of['cadena','micro','italiana','gf18k'])g[k]+=Number(gm[k])||0;}else if(catToGroup[l.category])g[catToGroup[l.category]]+=Number(l.grams)||0; }
+      return [fecha,q.client||'',normName(q.scheduler||EMPRESA),normName(q.attendant||EMPRESA),r1(q.totalWeight),r1(g.cadena),r1(g.micro),r1(g.italiana),r1(g.gf18k),b0(Number(q.total)||0),b0(Math.round(totalCost)),b0(Math.round(profit)),b0(Math.round(base*PCT_SCHEDULER)),b0(Math.round(base*PCT_ATTENDANT)),b0(Math.round(base*PCT_EMPRESA))];
+    });
+    const esc=v=>{const s=String(v??'');return /[",;\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
+    const csv=[header,...rows.reverse()].map(r=>r.map(esc).join(';')).join('\r\n');
+    const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`ventas_${period}_${activeKey}.csv`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  };
+
+  const fmt$=v=>v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${Math.round(v/1000)}K`:`$${fmtCLP(v)}`;
+  const PAL=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8','#fb923c','#a78bfa'];
+  const GCOLORS={cadena:'#a0a0a0',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#c9a84c'};
+
+  return (
+    <div className="fade-in">
+
+      {/* ── period chips ── */}
+      <div className="chart-period-sel" style={{marginBottom:10}}>
+        {[['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
+          <button key={k} className={`chart-period-btn${period===k?' active':''}`} onClick={()=>setPeriod(k)}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* ── nav bar ── */}
+      <div className="chart-nav">
+        <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.min(i+1,activeList.length-1))} disabled={boundedIdx>=activeList.length-1}>‹</button>
+        <div className="chart-nav-center">
+          <div className="chart-nav-label">{activeLabel}</div>
+          {navIdx>0&&<button className="chart-nav-back" onClick={()=>setNavIdx(0)}>Volver a hoy</button>}
+        </div>
+        <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.max(i-1,0))} disabled={navIdx===0}>›</button>
+      </div>
+
+      {/* ── KPIs 3-col ── */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:8}}>
+        {[
+          {label:'Ventas',   value:fmt$(summary.totalVentas),  sub:`${periodQuotes.length} ventas`,color:'var(--gold-2)'},
+          {label:'Costos',   value:fmt$(summary.totalCostos),  sub:'Mercadería',               color:'var(--ink)'},
+          {label:'Ganancia', value:fmt$(summary.totalGanancia),sub:`${summary.margen}% margen`,color:summary.totalGanancia>=0?'var(--gold-2)':'var(--danger)'},
+          {label:'Com. equipo',value:fmt$(summary.totalComisionEquipo),sub:'70% ganancia',     color:'var(--ink)'},
+          {label:'Empresa',  value:fmt$(summary.totalEmpresa), sub:'30% ganancia',             color:'var(--ink)'},
+          {label:'Margen',   value:`${summary.margen}%`,       sub:'Neto',                     color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'},
+        ].map(c=>(
+          <div key={c.label} className="chart-kpi">
+            <div className="chart-kpi-label">{c.label}</div>
+            <div className="chart-kpi-value" style={{fontSize:13,color:c.color}}>{c.value}</div>
+            <div className="chart-kpi-sub">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── gramos por categoría ── */}
+      {(()=>{
+        const totG=Object.values(summary.gramsByGroup).reduce((s,v)=>s+v,0);
+        if(!totG) return null;
+        const cats=[['cadena','Cadena 🔗'],['micro','Micro 💎'],['italiana','Italiana 🇮🇹'],['gf18k','GF 18K ☀️']].filter(([k])=>summary.gramsByGroup[k]>0);
+        return(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Gramos <em>vendidos</em></h3><span className="eyebrow">{Math.round(totG*10)/10}g total</span></div>
+          <div style={{padding:'12px 14px 10px'}}>
+            <div style={{display:'flex',height:14,borderRadius:7,overflow:'hidden',marginBottom:12,gap:2}}>
+              {cats.map(([k])=><div key={k} style={{flex:summary.gramsByGroup[k],background:GCOLORS[k]||'#818cf8'}}/>)}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 16px'}}>
+              {cats.map(([k,lbl])=>(
+                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',fontFamily:'var(--mono)',fontSize:12}}>
+                  <span style={{color:'var(--ink-mute)'}}>{lbl}</span>
+                  <span style={{color:GCOLORS[k],fontWeight:700}}>{Math.round(summary.gramsByGroup[k]*10)/10}g</span>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--line)',display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12}}>
+              <span style={{color:'var(--ink-mute)',letterSpacing:'.1em',textTransform:'uppercase'}}>Total</span>
+              <span style={{color:'var(--gold-2)',fontWeight:700}}>{Math.round(totG*10)/10}g</span>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── comisiones por persona ── */}
+      {summary.rows.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Comisiones <em>por persona</em></h3><span className="eyebrow">{fmt$(summary.totalComisionEquipo+summary.totalEmpresa)} total</span></div>
+          <div style={{padding:'4px 0 8px'}}>
+            {summary.rows.map((r,i)=>{
+              const tot=summary.totalComisionEquipo+summary.totalEmpresa;
+              const pct=tot?Math.round(r.comision/tot*100):0;
+              const color=r.name===EMPRESA?'#a0a0a0':PAL[i%PAL.length];
+              const isEmpresa=r.name===EMPRESA;
+              return(
+              <div key={r.name} style={{padding:'10px 16px',borderBottom:'1px solid var(--line)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{width:24,height:24,borderRadius:'50%',background:`${color}22`,border:`1px solid ${color}55`,display:'inline-flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--mono)',fontSize:8,fontWeight:800,color,flexShrink:0}}>
+                      {initials(r.name)}
+                    </span>
+                    <span style={{fontWeight:700,fontSize:14,color:'var(--ink-dim)'}}>{r.name}</span>
+                    {isEmpresa&&<span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',letterSpacing:'.1em'}}>30%</span>}
+                  </div>
+                  <div style={{display:'flex',alignItems:'baseline',gap:6}}>
+                    <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>{pct}%</span>
+                    <span style={{fontFamily:'var(--mono)',fontSize:14,fontWeight:700,color}}>{fmt$(r.comision)}</span>
+                  </div>
+                </div>
+                <div style={{height:5,borderRadius:3,background:'var(--line)',overflow:'hidden',marginBottom:5}}>
+                  <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3}}/>
+                </div>
+                <div style={{display:'flex',gap:14,fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>
+                  {r.agendado>0&&<span>Agendó <b style={{color:'var(--ink-dim)'}}>{fmt$(r.agendado)}</b></span>}
+                  {r.atendido>0&&<span>Atendió <b style={{color:'var(--ink-dim)'}}>{fmt$(r.atendido)}</b></span>}
+                  {r.empresa>0&&<span>Empresa <b style={{color:'var(--ink-dim)'}}>{fmt$(r.empresa)}</b></span>}
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── ventas colapsables + CSV ── */}
+      <div className="chart-card">
+        <div className="chart-head" style={{cursor:'pointer'}} onClick={()=>setSalesOpen(o=>!o)}>
+          <h3>Ventas <em>del {periodName.toLowerCase()}</em></h3>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <button onClick={e=>{e.stopPropagation();exportCSV();}} disabled={periodQuotes.length===0}
+              style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',padding:'3px 8px',borderRadius:6,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',textTransform:'uppercase'}}>
+              CSV
+            </button>
+            <span className="eyebrow">{periodQuotes.length}</span>
+            <span style={{color:'var(--ink-mute)',fontSize:12,transition:'transform .2s',display:'inline-block',transform:salesOpen?'rotate(180deg)':'rotate(0deg)'}}>▼</span>
+          </div>
+        </div>
+        {salesOpen&&(periodQuotes.length===0?(
+          <div className="empty" style={{padding:'20px 0'}}>
+            <div className="diamond"/>
+            <p>No hay ventas concretadas en este período</p>
+          </div>
+        ):(
+          <SalesList quotes={periodQuotes} prices={prices}/>
+        ))}
+      </div>
+
+    </div>
+  );
+}
 
   const allSemesters = useMemo(() => {
     const set = new Set(history.map(q => semesterKey(q.at)));
