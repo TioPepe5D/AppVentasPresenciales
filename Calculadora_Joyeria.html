@@ -492,6 +492,13 @@
 
   /* Charts Tab */
   .charts-grid{display:grid;gap:14px}
+  .chart-nav{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:12px}
+  .chart-nav-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--bg-2);display:grid;place-items:center;font-size:16px;color:var(--ink-dim);cursor:pointer;flex-shrink:0;transition:all .15s}
+  .chart-nav-btn:disabled{opacity:.25;cursor:not-allowed}
+  .chart-nav-btn:not(:disabled):hover{border-color:var(--gold);color:var(--gold-2)}
+  .chart-nav-center{flex:1;text-align:center;min-width:0}
+  .chart-nav-label{font-weight:700;font-size:15px;color:var(--ink);letter-spacing:.01em}
+  .chart-nav-back{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--gold-2);font-weight:700;text-transform:uppercase;margin-top:3px;cursor:pointer;background:none;border:none;padding:0;display:block;width:100%}
   .chart-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
   .chart-card + .chart-card{margin-top:0}
   .chart-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -3051,65 +3058,97 @@ const CHART_PERIODS = [
 ];
 
 function ChartsTab({ history, prices }) {
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('week');
+  const [navOffset, setNavOffset] = useState(0);
   const [focusKey, setFocusKey] = useState(null);
   const [sortCol, setSortCol] = useState('grams');
   const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  // Reset focusKey when period changes
-  useEffect(()=>{ setFocusKey(null); },[period]);
+  useEffect(()=>{ setFocusKey(null); setNavOffset(0); },[period]);
+  useEffect(()=>{ setFocusKey(null); },[navOffset]);
 
-  const isoWeek = (d) => { const j=new Date(d.getFullYear(),0,4); const w=new Date(j); w.setDate(j.getDate()-((j.getDay()+6)%7)); return Math.floor((d-w)/(7*864e5))+1; };
-  const getMon = (d) => { const day=d.getDay(),diff=day===0?-6:1-day; return new Date(d.getFullYear(),d.getMonth(),d.getDate()+diff); };
-
-  const getBucketKey = useCallback((q) => {
-    const d=new Date(q.at);
-    if(period==='day')   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if(period==='week')  { const m=getMon(d); return `${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`; }
-    if(period==='month') return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    return String(d.getFullYear());
-  }, [period]);
-
-  const getBuckets = useCallback(() => {
-    const now=new Date(),buckets=[],seen=new Set();
-    const add=(key,label)=>{ if(!seen.has(key)){seen.add(key);buckets.push({key,label});} };
+  // Compute the date range + display label for the current period + offset
+  const navRange = useMemo(()=>{
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
     if(period==='day'){
-      for(let i=29;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,`${d.getDate()}/${d.getMonth()+1}`);}
-    }else if(period==='week'){
-      for(let i=11;i>=0;i--){const d=new Date(now.getTime()-i*7*864e5);const m=getMon(d);add(`${m.getFullYear()}-W${String(isoWeek(m)).padStart(2,'0')}`,`${m.getDate()}/${m.getMonth()+1}`);}
-    }else if(period==='month'){
-      for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,d.toLocaleDateString('es-CL',{month:'short',year:'2-digit'}));}
-    }else{
-      const years=new Set(history.filter(q=>q.concretada).map(q=>new Date(q.at).getFullYear()));years.add(now.getFullYear());
-      [...years].sort().forEach(y=>add(String(y),String(y)));
+      const start=new Date(today.getTime()-navOffset*864e5);
+      const end=new Date(start.getTime()+864e5);
+      const label=navOffset===0?'Hoy':navOffset===1?'Ayer':
+        start.toLocaleDateString('es-CL',{weekday:'short',day:'numeric',month:'short'}).replace(/\./g,'');
+      return {start,end,label};
     }
-    return buckets;
-  }, [period,history]);
+    if(period==='week'){
+      const dow=today.getDay()||7;
+      const thisMon=new Date(today.getTime()-(dow-1)*864e5);
+      const start=new Date(thisMon.getTime()-navOffset*7*864e5);
+      const end=new Date(start.getTime()+7*864e5);
+      const sun=new Date(end.getTime()-864e5);
+      const ms=start.getMonth()===sun.getMonth();
+      const fmt=d=>d.toLocaleDateString('es-CL',{day:'numeric',month:'short'}).replace(/\./g,'');
+      const label=ms?`${start.getDate()} – ${sun.getDate()} ${start.toLocaleDateString('es-CL',{month:'short'}).replace(/\./g,'')}`:`${fmt(start)} – ${fmt(sun)}`;
+      return {start,end,label};
+    }
+    if(period==='month'){
+      const start=new Date(now.getFullYear(),now.getMonth()-navOffset,1);
+      const end=new Date(start.getFullYear(),start.getMonth()+1,1);
+      const l=start.toLocaleDateString('es-CL',{month:'long',year:'numeric'});
+      return {start,end,label:l.charAt(0).toUpperCase()+l.slice(1)};
+    }
+    const y=now.getFullYear()-navOffset;
+    return {start:new Date(y,0,1),end:new Date(y+1,0,1),label:String(y)};
+  },[period,navOffset]);
 
   const timeData = useMemo(()=>{
-    const buckets=getBuckets(),map={};
-    for(const b of buckets) map[b.key]={...b,total:0,ganancia:0,count:0};
+    const {start,end}=navRange;
+    const buckets=[];
+    if(period==='day'){
+      for(let h=0;h<24;h+=2){
+        const s=start.getTime()+h*3600000;
+        buckets.push({key:String(h),label:`${String(h).padStart(2,'0')}h`,start:s,end:s+7200000,total:0,ganancia:0,count:0});
+      }
+    }else if(period==='week'){
+      const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+      for(let d=0;d<7;d++){
+        const s=start.getTime()+d*864e5;
+        buckets.push({key:String(d),label:DAYS[d],start:s,end:s+864e5,total:0,ganancia:0,count:0});
+      }
+    }else if(period==='month'){
+      const cur=new Date(start),endMs=end.getTime();
+      while(cur.getTime()<endMs){
+        const s=cur.getTime();
+        const e=new Date(cur.getFullYear(),cur.getMonth(),cur.getDate()+1).getTime();
+        buckets.push({key:String(cur.getDate()),label:String(cur.getDate()),start:s,end:e,total:0,ganancia:0,count:0});
+        cur.setDate(cur.getDate()+1);
+      }
+    }else{
+      const MONTHS=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+      const y=start.getFullYear();
+      for(let m=0;m<12;m++){
+        const s=new Date(y,m,1).getTime(),e=new Date(y,m+1,1).getTime();
+        buckets.push({key:String(m),label:MONTHS[m],start:s,end:e,total:0,ganancia:0,count:0});
+      }
+    }
     for(const q of history){
       if(!q.concretada) continue;
-      const key=getBucketKey(q); if(!map[key]) continue;
-      map[key].total+=Number(q.total)||0;
-      map[key].ganancia+=quoteCostAndProfit(q,prices).profit;
-      map[key].count++;
+      const at=q.at;
+      for(const b of buckets){
+        if(at>=b.start&&at<b.end){
+          b.total+=Number(q.total)||0;
+          b.ganancia+=quoteCostAndProfit(q,prices).profit;
+          b.count++;break;
+        }
+      }
     }
-    return buckets.map(b=>map[b.key]);
-  },[history,prices,period,getBuckets,getBucketKey]);
+    return buckets;
+  },[navRange,period,history,prices]);
 
-  // Ventas del rolling window; si hay focusKey sólo incluye ese bucket
   const visibleSales = useMemo(()=>{
-    const allKeys=new Set(getBuckets().map(b=>b.key));
-    return history.filter(q=>{
-      if(!q.concretada) return false;
-      const k=getBucketKey(q);
-      if(!allKeys.has(k)) return false;
-      if(focusKey && k!==focusKey) return false;
-      return true;
-    });
-  },[history,period,getBuckets,getBucketKey,focusKey]);
+    const startMs=navRange.start.getTime(),endMs=navRange.end.getTime();
+    const fb=focusKey!==null?timeData.find(b=>b.key===focusKey):null;
+    const fStart=fb?fb.start:startMs,fEnd=fb?fb.end:endMs;
+    return history.filter(q=>q.concretada&&q.at>=fStart&&q.at<fEnd);
+  },[navRange,history,focusKey,timeData]);
 
   const personData = useMemo(()=>{
     const totals={};
@@ -3256,17 +3295,20 @@ function ChartsTab({ history, prices }) {
   const hasData=history.some(q=>q.concretada);
   return (
     <div className="fade-in">
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-        <div className="chart-period-sel">
-          {CHART_PERIODS.map(p=>(
-            <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
-          ))}
+      {/* ── period chips ── */}
+      <div className="chart-period-sel" style={{marginBottom:10}}>
+        {CHART_PERIODS.map(p=>(
+          <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
+        ))}
+      </div>
+      {/* ── nav bar: arrows + label + volver ── */}
+      <div className="chart-nav">
+        <button className="chart-nav-btn" onClick={()=>setNavOffset(o=>o+1)}>‹</button>
+        <div className="chart-nav-center">
+          <div className="chart-nav-label">{navRange.label}</div>
+          {navOffset>0&&<button className="chart-nav-back" onClick={()=>setNavOffset(0)}>Volver a hoy</button>}
         </div>
-        {focusKey&&(
-          <button onClick={()=>setFocusKey(null)}
-            style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:8,border:'1px solid var(--gold)',background:'rgba(var(--accent-rgb),.12)',color:'var(--gold-2)',cursor:'pointer',whiteSpace:'nowrap'}}
-          >✕ Ver todos</button>
-        )}
+        <button className="chart-nav-btn" onClick={()=>setNavOffset(o=>Math.max(0,o-1))} disabled={navOffset===0}>›</button>
       </div>
       {!hasData?(
         <div className="card"><div className="chart-empty"><div style={{fontSize:36,marginBottom:12}}>📊</div><p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p><p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p></div></div>
