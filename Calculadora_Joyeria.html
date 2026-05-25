@@ -2525,6 +2525,19 @@ function ReportsTab({ history, prices, onToggleConcretada }){
 
   const periodQuotes = useMemo(()=>history.filter(q=>keyFn(q.at)===activeKey&&q.concretada),[history,keyFn,activeKey]);
 
+  // Período anterior para delta
+  const prevKey = useMemo(()=>{
+    const idx=activeList.indexOf(activeKey);
+    return idx>=0&&idx<activeList.length-1?activeList[idx+1]:null;
+  },[activeList,activeKey]);
+  const prevQuotes = useMemo(()=>prevKey?history.filter(q=>keyFn(q.at)===prevKey&&q.concretada):[]
+  ,[history,keyFn,prevKey]);
+  const prevVentas = useMemo(()=>prevQuotes.reduce((s,q)=>s+(Number(q.total)||0),0),[prevQuotes]);
+  const prevGanancia = useMemo(()=>prevQuotes.reduce((s,q)=>s+quoteCostAndProfit(q,prices).profit,0),[prevQuotes,prices]);
+
+  // Conversión: cotizaciones totales del período (concretadas + no concretadas)
+  const totalCotizaciones = useMemo(()=>history.filter(q=>keyFn(q.at)===activeKey).length,[history,keyFn,activeKey]);
+
   const summary = useMemo(()=>{
     const byPerson={};
     let totalVentas=0,totalCostos=0,totalGanancia=0;
@@ -2575,7 +2588,12 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
 
-  const fmt$=v=>v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${Math.round(v/1000)}K`:`$${fmtCLP(v)}`;
+  const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
+  const delta=(curr,prev)=>prev>0?Math.round((curr-prev)/prev*100):null;
+  const deltaVentas=delta(summary.totalVentas,prevVentas);
+  const deltaGanancia=delta(summary.totalGanancia,prevGanancia);
+  const ticketPromedio=periodQuotes.length>0?Math.round(summary.totalVentas/periodQuotes.length):0;
+  const tasaConversion=totalCotizaciones>0?Math.round(periodQuotes.length/totalCotizaciones*100):null;
   const PAL=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8','#fb923c','#a78bfa'];
   const GCOLORS={cadena:'#a0a0a0',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#c9a84c'};
 
@@ -2600,22 +2618,49 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       </div>
 
       {/* ── KPIs 3-col ── */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:8}}>
-        {[
-          {label:'Ventas',   value:fmt$(summary.totalVentas),  sub:`${periodQuotes.length} ventas`,color:'var(--gold-2)'},
-          {label:'Costos',   value:fmt$(summary.totalCostos),  sub:'Mercadería',               color:'var(--ink)'},
-          {label:'Ganancia', value:fmt$(summary.totalGanancia),sub:`${summary.margen}% margen`,color:summary.totalGanancia>=0?'var(--gold-2)':'var(--danger)'},
-          {label:'Com. equipo',value:fmt$(summary.totalComisionEquipo),sub:'70% ganancia',     color:'var(--ink)'},
-          {label:'Empresa',  value:fmt$(summary.totalEmpresa), sub:'30% ganancia',             color:'var(--ink)'},
-          {label:'Margen',   value:`${summary.margen}%`,       sub:'Neto',                     color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'},
-        ].map(c=>(
-          <div key={c.label} className="chart-kpi">
-            <div className="chart-kpi-label">{c.label}</div>
-            <div className="chart-kpi-value" style={{fontSize:13,color:c.color}}>{c.value}</div>
-            <div className="chart-kpi-sub">{c.sub}</div>
+      {(()=>{
+        const DeltaBadge=({d})=>d===null?null:(
+          <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,color:d>=0?'#4ade80':'var(--danger)',display:'block',marginTop:2}}>
+            {d>=0?'↑':'↓'}{Math.abs(d)}% vs anterior
+          </span>
+        );
+        return(
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:8}}>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Ventas</div>
+            <div className="chart-kpi-value" style={{fontSize:11,color:'var(--gold-2)'}}>{fmt$(summary.totalVentas)}</div>
+            <DeltaBadge d={deltaVentas}/>
+            <div className="chart-kpi-sub">{periodQuotes.length} venta{periodQuotes.length!==1?'s':''}</div>
           </div>
-        ))}
-      </div>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Ganancia</div>
+            <div className="chart-kpi-value" style={{fontSize:11,color:summary.totalGanancia>=0?'var(--gold-2)':'var(--danger)'}}>{fmt$(Math.abs(Math.round(summary.totalGanancia)))}</div>
+            <DeltaBadge d={deltaGanancia}/>
+            <div className="chart-kpi-sub">{summary.margen}% margen</div>
+          </div>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Costos</div>
+            <div className="chart-kpi-value" style={{fontSize:11}}>{fmt$(summary.totalCostos)}</div>
+            <div className="chart-kpi-sub">Mercadería</div>
+          </div>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Ticket prom.</div>
+            <div className="chart-kpi-value" style={{fontSize:11}}>{ticketPromedio>0?fmt$(ticketPromedio):'—'}</div>
+            <div className="chart-kpi-sub">Por venta</div>
+          </div>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Conversión</div>
+            <div className="chart-kpi-value" style={{fontSize:13,color:tasaConversion>=50?'var(--gold-2)':tasaConversion>=25?'var(--ink)':'var(--danger)'}}>{tasaConversion!==null?`${tasaConversion}%`:'—'}</div>
+            <div className="chart-kpi-sub">{periodQuotes.length}/{totalCotizaciones} cotiz.</div>
+          </div>
+          <div className="chart-kpi">
+            <div className="chart-kpi-label">Margen</div>
+            <div className="chart-kpi-value" style={{fontSize:13,color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'}}>{summary.margen}%</div>
+            <div className="chart-kpi-sub">Bruto neto</div>
+          </div>
+        </div>
+        );
+      })()}
 
       {/* ── gramos por categoría ── */}
       {(()=>{
@@ -2919,12 +2964,10 @@ const CHART_PERIODS = [
 function ChartsTab({ history, prices }) {
   const [period, setPeriod] = useState('week');
   const [navOffset, setNavOffset] = useState(0);
-  const [focusKey, setFocusKey] = useState(null);
   const [sortCol, setSortCol] = useState('grams');
   const getCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  useEffect(()=>{ setFocusKey(null); setNavOffset(0); },[period]);
-  useEffect(()=>{ setFocusKey(null); },[navOffset]);
+  useEffect(()=>{ setNavOffset(0); },[period]);
 
   // Compute the date range + display label for the current period + offset
   const navRange = useMemo(()=>{
@@ -3004,10 +3047,14 @@ function ChartsTab({ history, prices }) {
 
   const visibleSales = useMemo(()=>{
     const startMs=navRange.start.getTime(),endMs=navRange.end.getTime();
-    const fb=focusKey!==null?timeData.find(b=>b.key===focusKey):null;
-    const fStart=fb?fb.start:startMs,fEnd=fb?fb.end:endMs;
-    return history.filter(q=>q.concretada&&q.at>=fStart&&q.at<fEnd);
-  },[navRange,history,focusKey,timeData]);
+    return history.filter(q=>q.concretada&&q.at>=startMs&&q.at<endMs);
+  },[navRange,history]);
+
+  const bestKey = useMemo(()=>{
+    if(!timeData.length) return null;
+    const best=timeData.reduce((a,b)=>b.total>a.total?b:a,timeData[0]);
+    return best.total>0?best.key:null;
+  },[timeData]);
 
   const personData = useMemo(()=>{
     const totals={};
@@ -3093,31 +3140,13 @@ function ChartsTab({ history, prices }) {
   },[visibleSales,prices]);
 
   const salesRef=useRef(null);
-  const timeDataRef=useRef(timeData);
-  useEffect(()=>{ timeDataRef.current=timeData; },[timeData]);
-
-  const handleChartTap=useCallback((e)=>{
-    const canvas=salesRef.current; if(!canvas) return;
-    const data=timeDataRef.current; if(!data.length) return;
-    e.preventDefault();
-    const rect=canvas.getBoundingClientRect();
-    const clientX=e.touches?e.changedTouches[0].clientX:e.clientX;
-    const cssX=clientX-rect.left;
-    const W=canvas.offsetWidth,padL=10,padR=10,chartW=W-padL-padR;
-    const slotW=chartW/data.length;
-    const i=Math.floor((cssX-padL)/slotW);
-    if(i>=0&&i<data.length){
-      const key=data[i].key;
-      setFocusKey(prev=>prev===key?null:key);
-    }
-  },[]);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
     const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=220;
     canvas.width=W*dpr;canvas.height=H*dpr;
     const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-    const gold=getCssVar('--gold'),gold2=getCssVar('--gold-2'),lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute'),inkDim=getCssVar('--ink-dim');
+    const gold2=getCssVar('--gold-2'),lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute'),inkDim=getCssVar('--ink-dim');
     ctx.clearRect(0,0,W,H);
     const pad={top:20,right:10,bottom:44,left:10},chartW=W-pad.left-pad.right,chartH=H-pad.top-pad.bottom;
     const n=timeData.length; if(!n) return;
@@ -3126,13 +3155,15 @@ function ChartsTab({ history, prices }) {
     [0,.25,.5,.75,1].forEach(t=>{const y=pad.top+chartH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
     timeData.forEach((d,i)=>{
       const cx=pad.left+slotW*i+slotW/2;
-      const isFocused=!focusKey||d.key===focusKey;
-      const alpha=isFocused?'':'44';
+      const isBest=d.key===bestKey;
+      const alpha=isBest||!bestKey?'ff':'55';
       const drawBar=(val,xOff,color)=>{
         const bH=val>0?Math.max(3,(val/maxVal)*chartH):0; if(!bH) return;
         const x=cx+xOff,y=pad.top+chartH-bH,r=Math.min(3,barW/2);
-        const c=color+alpha;
-        const grad=ctx.createLinearGradient(0,y,0,pad.top+chartH);grad.addColorStop(0,c);grad.addColorStop(1,c.slice(0,7)+'22');
+        const hex=color+(alpha==='ff'?'':alpha);
+        const grad=ctx.createLinearGradient(0,y,0,pad.top+chartH);
+        grad.addColorStop(0,alpha==='ff'?color:color+'55');
+        grad.addColorStop(1,color+'11');
         ctx.fillStyle=grad;ctx.beginPath();
         ctx.moveTo(x+r,y);ctx.lineTo(x+barW-r,y);ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
         ctx.lineTo(x+barW,pad.top+chartH);ctx.lineTo(x,pad.top+chartH);ctx.lineTo(x,y+r);
@@ -3141,13 +3172,18 @@ function ChartsTab({ history, prices }) {
       drawBar(d.total,-barW-gap/2,gold2);
       drawBar(Math.max(0,d.ganancia),gap/2,'#4ade80');
       const showLabel=n<=14||i%Math.ceil(n/14)===0||i===n-1;
-      if(showLabel){ctx.fillStyle=isFocused?inkMute:inkMute+'66';ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
-      if(isFocused&&d.total>0){const lbl=d.total>=1e6?`${(d.total/1e6).toFixed(1)}M`:`${Math.round(d.total/1000)}K`;ctx.fillStyle=inkDim;ctx.font=`600 8px 'Montserrat',sans-serif`;ctx.textAlign='center';const bH=(d.total/maxVal)*chartH;ctx.fillText(lbl,cx-barW/2-gap/2,pad.top+chartH-bH-5);}
+      if(showLabel){ctx.fillStyle=isBest?inkDim:inkMute+(alpha==='55'?'66':'');ctx.font=`${isBest?700:500} 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
+      if(isBest&&d.total>0){
+        const lbl=d.total>=1e6?`${(d.total/1e6).toFixed(1)}M`:`${Math.round(d.total/1000)}K`;
+        ctx.fillStyle=gold2;ctx.font=`700 9px 'Montserrat',sans-serif`;ctx.textAlign='center';
+        const bH=(d.total/maxVal)*chartH;ctx.fillText(lbl,cx-barW/2-gap/2,pad.top+chartH-bH-6);
+        ctx.fillStyle=gold2+'44';ctx.beginPath();ctx.arc(cx-barW/2-gap/2,pad.top+chartH-bH-14,2.5,0,Math.PI*2);ctx.fill();
+      }
     });
     const ly=H-16;ctx.font=`500 8px 'Montserrat',sans-serif`;
     ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-7,10,7);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+13,ly);
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
-  },[timeData,focusKey]);
+  },[timeData,bestKey]);
 
 
 
@@ -3174,21 +3210,18 @@ function ChartsTab({ history, prices }) {
       ):(
         <div className="charts-grid">
           <div className="chart-kpi-row">
-            <div className="chart-kpi"><div className="chart-kpi-label">Ventas</div><div className="chart-kpi-value" style={{fontSize:13}}>${kpis.ventas>=1e6?(kpis.ventas/1e6).toFixed(1)+'M':kpis.ventas>=1000?Math.round(kpis.ventas/1000)+'K':fmtCLP(kpis.ventas)}</div><div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div></div>
-            <div className="chart-kpi"><div className="chart-kpi-label">Ganancia</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${kpis.ganancia>=1e6?(kpis.ganancia/1e6).toFixed(1)+'M':kpis.ganancia>=1000?Math.round(kpis.ganancia/1000)+'K':fmtCLP(Math.abs(kpis.ganancia))}</div><div className="chart-kpi-sub">Neta</div></div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Ventas</div><div className="chart-kpi-value" style={{fontSize:12}}>${fmtCLP(kpis.ventas)}</div><div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div></div>
+            <div className="chart-kpi"><div className="chart-kpi-label">Ganancia</div><div className="chart-kpi-value" style={{fontSize:12,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${fmtCLP(Math.abs(Math.round(kpis.ganancia)))}</div><div className="chart-kpi-sub">Neta</div></div>
             <div className="chart-kpi"><div className="chart-kpi-label">Margen</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.margen>=30?'var(--gold-2)':kpis.margen>=15?'var(--ink)':'var(--danger)'}}>{kpis.margen}%</div><div className="chart-kpi-sub">Bruto</div></div>
           </div>
           <div className="chart-card">
             <div className="chart-head">
               <h3>Venta <em>vs</em> Ganancia</h3>
-              <span className="eyebrow">{focusKey?'toca de nuevo para ver todos':'toca una barra'}</span>
+              {bestKey&&(()=>{const b=timeData.find(d=>d.key===bestKey);return b?<span className="eyebrow" style={{color:'var(--gold-2)'}}>↑ Pico: {b.label.toUpperCase()} · ${fmtCLP(b.total)}</span>:null;})()}
             </div>
             <div className="chart-body">
               <div className="chart-canvas-wrap">
-                <canvas ref={salesRef} style={{height:220,cursor:'pointer',touchAction:'none'}}
-                  onClick={handleChartTap}
-                  onTouchEnd={handleChartTap}
-                />
+                <canvas ref={salesRef} style={{height:220}}/>
               </div>
             </div>
           </div>
@@ -3203,7 +3236,7 @@ function ChartsTab({ history, prices }) {
               {key:'pct',    label:'%'},
             ];
             const sorted=[...productStats].sort((a,b)=>sortCol==='name'?a.name.localeCompare(b.name):b[sortCol]-a[sortCol]);
-            const fmt$=v=>v>=1e6?`$${(v/1e6).toFixed(1)}M`:v>=1000?`$${Math.round(v/1000)}K`:`$${fmtCLP(v)}`;
+            const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
             const thStyle=(k)=>({fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:sortCol===k?'var(--gold-2)':'var(--ink-mute)',padding:'8px 10px',textAlign:k==='name'?'left':'right',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',borderBottom:'1px solid var(--line)',background:'var(--card)'});
             const tdStyle=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
             return(
