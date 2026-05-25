@@ -2588,6 +2588,82 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   };
 
+  // Inteligencia de negocio
+  const insights = useMemo(()=>{
+    const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
+    const groupLabels={cadena:'Cadena 🔗',micro:'Micro 💎',italiana:'Italiana 🇮🇹',gf18k:'GF 18K ☀️'};
+    const isCurrentPeriod=keyFn(Date.now())===activeKey;
+
+    // Días activos vs total del período
+    const activeDaySet=new Set(periodQuotes.map(q=>dayKey(q.at)));
+    const activeDays=activeDaySet.size;
+    let totalDays=1;
+    if(period==='monthly'){
+      const parts=activeKey.split('-');
+      totalDays=new Date(Number(parts[0]),Number(parts[1]),0).getDate();
+    } else if(period==='weekly') totalDays=7;
+    else if(period==='yearly') totalDays=365;
+
+    // Proyección (solo período actual, mensual o semanal)
+    let projection=null;
+    if(isCurrentPeriod&&periodQuotes.length>0&&(period==='monthly'||period==='weekly')){
+      const now=new Date();
+      let start,daysPassed,daysLeft;
+      if(period==='monthly'){
+        start=new Date(now.getFullYear(),now.getMonth(),1);
+        daysPassed=Math.max(1,Math.ceil((Date.now()-start.getTime())/864e5));
+        daysLeft=totalDays-daysPassed;
+      } else {
+        const dow=now.getDay()||7;
+        start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-(dow-1));
+        daysPassed=Math.max(1,dow);
+        daysLeft=7-daysPassed;
+      }
+      if(daysLeft>0){
+        projection=Math.round(summary.totalVentas+(summary.totalVentas/daysPassed)*daysLeft);
+      }
+    }
+
+    // Persona que más vende (por total atendido)
+    const salesByPerson={};
+    for(const q of periodQuotes){
+      const att=normName((q.attendant||'').trim()||EMPRESA);
+      if(!salesByPerson[att]) salesByPerson[att]={count:0,total:0};
+      salesByPerson[att].count++; salesByPerson[att].total+=Number(q.total)||0;
+    }
+    const personStar=Object.entries(salesByPerson).filter(([n])=>n!==EMPRESA).sort((a,b)=>b[1].total-a[1].total)[0];
+
+    // Producto estrella (por ingresos generados)
+    const revenueByGroup={cadena:0,micro:0,italiana:0,gf18k:0};
+    for(const q of periodQuotes){
+      for(const l of(q.lines||[])){
+        const grp=catToGroup[l.category]; if(!grp) continue;
+        const price=(prices[l.category]?.prices[q.tier])||0;
+        revenueByGroup[grp]+=(Number(l.grams)||0)*price;
+      }
+    }
+    const productStar=Object.entries(revenueByGroup).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+
+    // Sugerencia de compra (gramos vendidos + 15% buffer)
+    const buySuggestion=Object.entries(summary.gramsByGroup)
+      .filter(([k,v])=>v>0)
+      .map(([k,v])=>({label:groupLabels[k]||k,sold:Math.round(v*10)/10,suggest:Math.ceil(v*1.15)}))
+      .sort((a,b)=>b.sold-a.sold);
+
+    // Días sin ventas consecutivos (desde hoy hacia atrás, solo período actual)
+    let deadStreak=0;
+    if(isCurrentPeriod){
+      const todayStart=_dayStart(new Date());
+      for(let d=0;d<60;d++){
+        const dk=dayKey(todayStart.getTime()-d*864e5);
+        if(activeDaySet.has(dk)) break;
+        deadStreak++;
+      }
+    }
+
+    return {activeDays,totalDays,projection,personStar,productStar,buySuggestion,deadStreak,isCurrentPeriod};
+  },[periodQuotes,summary,period,activeKey,keyFn,prices]);
+
   const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
   const delta=(curr,prev)=>prev>0?Math.round((curr-prev)/prev*100):null;
   const deltaVentas=delta(summary.totalVentas,prevVentas);
@@ -2658,6 +2734,43 @@ function ReportsTab({ history, prices, onToggleConcretada }){
             <div className="chart-kpi-value" style={{fontSize:13,color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'}}>{summary.margen}%</div>
             <div className="chart-kpi-sub">Bruto neto</div>
           </div>
+        </div>
+        );
+      })()}
+
+      {/* ── inteligencia de negocio ── */}
+      {periodQuotes.length>0&&(()=>{
+        const chips=[];
+        if(insights.projection) chips.push({icon:'📈',label:'Proyección del mes',value:fmt$(insights.projection),sub:'Al ritmo actual',color:'var(--gold-2)'});
+        if(insights.personStar) chips.push({icon:'⭐',label:'Mayor vendedor',value:insights.personStar[0],sub:`${insights.personStar[1].count} ventas · ${fmt$(insights.personStar[1].total)}`,color:'var(--ink)'});
+        if(insights.productStar) chips.push({icon:'💎',label:'Producto estrella',value:{cadena:'Cadena',micro:'Micro',italiana:'Italiana',gf18k:'GF 18K'}[insights.productStar[0]]||insights.productStar[0],sub:`${fmt$(Math.round(insights.productStar[1]))} en ingresos`,color:'var(--ink)'});
+        chips.push({icon:'📅',label:'Días activos',value:`${insights.activeDays}/${insights.totalDays}`,sub:`${Math.round(insights.activeDays/insights.totalDays*100)}% de eficiencia`,color:insights.activeDays/insights.totalDays>=0.5?'var(--gold-2)':insights.activeDays/insights.totalDays>=0.3?'var(--ink)':'var(--danger)'});
+        if(insights.deadStreak>=2) chips.push({icon:'⚠️',label:'Sin ventas',value:`${insights.deadStreak} días`,sub:'Racha actual sin cierre',color:'var(--danger)'});
+        return(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Inteligencia <em>de negocio</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {chips.map(c=>(
+              <div key={c.label} style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+                <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>{c.icon} {c.label}</div>
+                <div style={{fontSize:16,fontWeight:800,color:c.color,fontFamily:'var(--mono)',letterSpacing:'-.01em',marginBottom:3,wordBreak:'break-word'}}>{c.value}</div>
+                <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{c.sub}</div>
+              </div>
+            ))}
+          </div>
+          {insights.buySuggestion.length>0&&(
+            <div style={{padding:'0 16px 14px'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>🛒 Sugerencia de compra</div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                {insights.buySuggestion.map(s=>(
+                  <div key={s.label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                    <span style={{color:'var(--ink-dim)',fontWeight:600}}>{s.label}</span>
+                    <span style={{color:'var(--ink-mute)'}}>Vendido: <b style={{color:'var(--ink)'}}>{s.sold}g</b> → Reponer: <b style={{color:'var(--gold-2)'}}>{s.suggest}g</b></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         );
       })()}
@@ -3050,11 +3163,23 @@ function ChartsTab({ history, prices }) {
     return history.filter(q=>q.concretada&&q.at>=startMs&&q.at<endMs);
   },[navRange,history]);
 
-  const bestKey = useMemo(()=>{
-    if(!timeData.length) return null;
-    const best=timeData.reduce((a,b)=>b.total>a.total?b:a,timeData[0]);
-    return best.total>0?best.key:null;
-  },[timeData]);
+  // Patrón histórico sobre TODOS los datos
+  const historicalPattern = useMemo(()=>{
+    const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+    const byDow=Array(7).fill(0).map((_,i)=>({label:DAYS[i],total:0,count:0}));
+    const bySlot=Array(12).fill(0).map((_,i)=>({label:`${String(i*2).padStart(2,'0')}:00`,total:0,count:0}));
+    for(const q of history){
+      if(!q.concretada) continue;
+      const d=new Date(q.at);
+      const dow=(d.getDay()+6)%7;
+      byDow[dow].total+=Number(q.total)||0; byDow[dow].count++;
+      const slot=Math.min(11,Math.floor(d.getHours()/2));
+      bySlot[slot].total+=Number(q.total)||0; bySlot[slot].count++;
+    }
+    const bestDow=byDow.reduce((a,b)=>b.total>a.total?b:a,byDow[0]);
+    const bestSlot=bySlot.reduce((a,b)=>b.total>a.total?b:a,bySlot[0]);
+    return {bestDow,bestSlot,hasData:byDow.some(d=>d.count>0)};
+  },[history]);
 
   const personData = useMemo(()=>{
     const totals={};
@@ -3155,15 +3280,11 @@ function ChartsTab({ history, prices }) {
     [0,.25,.5,.75,1].forEach(t=>{const y=pad.top+chartH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
     timeData.forEach((d,i)=>{
       const cx=pad.left+slotW*i+slotW/2;
-      const isBest=d.key===bestKey;
-      const alpha=isBest||!bestKey?'ff':'55';
       const drawBar=(val,xOff,color)=>{
         const bH=val>0?Math.max(3,(val/maxVal)*chartH):0; if(!bH) return;
         const x=cx+xOff,y=pad.top+chartH-bH,r=Math.min(3,barW/2);
-        const hex=color+(alpha==='ff'?'':alpha);
         const grad=ctx.createLinearGradient(0,y,0,pad.top+chartH);
-        grad.addColorStop(0,alpha==='ff'?color:color+'55');
-        grad.addColorStop(1,color+'11');
+        grad.addColorStop(0,color);grad.addColorStop(1,color+'18');
         ctx.fillStyle=grad;ctx.beginPath();
         ctx.moveTo(x+r,y);ctx.lineTo(x+barW-r,y);ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
         ctx.lineTo(x+barW,pad.top+chartH);ctx.lineTo(x,pad.top+chartH);ctx.lineTo(x,y+r);
@@ -3172,18 +3293,12 @@ function ChartsTab({ history, prices }) {
       drawBar(d.total,-barW-gap/2,gold2);
       drawBar(Math.max(0,d.ganancia),gap/2,'#4ade80');
       const showLabel=n<=14||i%Math.ceil(n/14)===0||i===n-1;
-      if(showLabel){ctx.fillStyle=isBest?inkDim:inkMute+(alpha==='55'?'66':'');ctx.font=`${isBest?700:500} 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
-      if(isBest&&d.total>0){
-        const lbl=d.total>=1e6?`${(d.total/1e6).toFixed(1)}M`:`${Math.round(d.total/1000)}K`;
-        ctx.fillStyle=gold2;ctx.font=`700 9px 'Montserrat',sans-serif`;ctx.textAlign='center';
-        const bH=(d.total/maxVal)*chartH;ctx.fillText(lbl,cx-barW/2-gap/2,pad.top+chartH-bH-6);
-        ctx.fillStyle=gold2+'44';ctx.beginPath();ctx.arc(cx-barW/2-gap/2,pad.top+chartH-bH-14,2.5,0,Math.PI*2);ctx.fill();
-      }
+      if(showLabel){ctx.fillStyle=inkMute;ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
     });
     const ly=H-16;ctx.font=`500 8px 'Montserrat',sans-serif`;
     ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-7,10,7);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+13,ly);
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
-  },[timeData,bestKey]);
+  },[timeData]);
 
 
 
@@ -3217,7 +3332,7 @@ function ChartsTab({ history, prices }) {
           <div className="chart-card">
             <div className="chart-head">
               <h3>Venta <em>vs</em> Ganancia</h3>
-              {bestKey&&(()=>{const b=timeData.find(d=>d.key===bestKey);return b?<span className="eyebrow" style={{color:'var(--gold-2)'}}>↑ Pico: {b.label.toUpperCase()} · ${fmtCLP(b.total)}</span>:null;})()}
+              <span className="eyebrow">{kpis.count} venta{kpis.count!==1?'s':''} · ${fmtCLP(kpis.ventas)}</span>
             </div>
             <div className="chart-body">
               <div className="chart-canvas-wrap">
@@ -3288,6 +3403,23 @@ function ChartsTab({ history, prices }) {
             </div>
             );
           })()}
+          {historicalPattern.hasData&&(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Patrón <em>histórico</em></h3><span className="eyebrow">sobre todos los datos</span></div>
+              <div style={{padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                {[
+                  {label:'Mejor día',value:historicalPattern.bestDow.label,sub:`$${fmtCLP(Math.round(historicalPattern.bestDow.total))} acum · ${historicalPattern.bestDow.count} venta${historicalPattern.bestDow.count!==1?'s':''}`,icon:'📅'},
+                  {label:'Mejor hora',value:historicalPattern.bestSlot.label,sub:`$${fmtCLP(Math.round(historicalPattern.bestSlot.total))} acum · ${historicalPattern.bestSlot.count} venta${historicalPattern.bestSlot.count!==1?'s':''}`,icon:'⏰'},
+                ].map(c=>(
+                  <div key={c.label} style={{background:'var(--bg-2)',borderRadius:12,padding:'12px 14px',border:'1px solid var(--line)'}}>
+                    <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:6}}>{c.icon} {c.label}</div>
+                    <div style={{fontSize:22,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',letterSpacing:'-.01em',marginBottom:4}}>{c.value}</div>
+                    <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{c.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
