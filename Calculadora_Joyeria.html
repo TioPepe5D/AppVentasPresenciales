@@ -2725,11 +2725,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
             <div className="chart-kpi-sub">Por venta</div>
           </div>
           <div className="chart-kpi">
-            <div className="chart-kpi-label">Conversión</div>
-            <div className="chart-kpi-value" style={{fontSize:13,color:tasaConversion>=50?'var(--gold-2)':tasaConversion>=25?'var(--ink)':'var(--danger)'}}>{tasaConversion!==null?`${tasaConversion}%`:'—'}</div>
-            <div className="chart-kpi-sub">{periodQuotes.length}/{totalCotizaciones} cotiz.</div>
-          </div>
-          <div className="chart-kpi">
             <div className="chart-kpi-label">Margen</div>
             <div className="chart-kpi-value" style={{fontSize:13,color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'}}>{summary.margen}%</div>
             <div className="chart-kpi-sub">Bruto neto</div>
@@ -2745,7 +2740,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         if(insights.personStar) chips.push({icon:'⭐',label:'Mayor vendedor',value:insights.personStar[0],sub:`${insights.personStar[1].count} ventas · ${fmt$(insights.personStar[1].total)}`,color:'var(--ink)'});
         if(insights.productStar) chips.push({icon:'💎',label:'Producto estrella',value:{cadena:'Cadena',micro:'Micro',italiana:'Italiana',gf18k:'GF 18K'}[insights.productStar[0]]||insights.productStar[0],sub:`${fmt$(Math.round(insights.productStar[1]))} en ingresos`,color:'var(--ink)'});
         chips.push({icon:'📅',label:'Días activos',value:`${insights.activeDays}/${insights.totalDays}`,sub:`${Math.round(insights.activeDays/insights.totalDays*100)}% de eficiencia`,color:insights.activeDays/insights.totalDays>=0.5?'var(--gold-2)':insights.activeDays/insights.totalDays>=0.3?'var(--ink)':'var(--danger)'});
-        if(insights.deadStreak>=2) chips.push({icon:'⚠️',label:'Sin ventas',value:`${insights.deadStreak} días`,sub:'Racha actual sin cierre',color:'var(--danger)'});
         return(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Inteligencia <em>de negocio</em></h3><span className="eyebrow">{activeLabel}</span></div>
@@ -3165,7 +3159,7 @@ function ChartsTab({ history, prices }) {
 
   // Patrón histórico sobre TODOS los datos
   const historicalPattern = useMemo(()=>{
-    const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+    const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
     const byDow=Array(7).fill(0).map((_,i)=>({label:DAYS[i],total:0,count:0}));
     const bySlot=Array(12).fill(0).map((_,i)=>({label:`${String(i*2).padStart(2,'0')}:00`,total:0,count:0}));
     for(const q of history){
@@ -3176,9 +3170,11 @@ function ChartsTab({ history, prices }) {
       const slot=Math.min(11,Math.floor(d.getHours()/2));
       bySlot[slot].total+=Number(q.total)||0; bySlot[slot].count++;
     }
-    const bestDow=byDow.reduce((a,b)=>b.total>a.total?b:a,byDow[0]);
-    const bestSlot=bySlot.reduce((a,b)=>b.total>a.total?b:a,bySlot[0]);
-    return {bestDow,bestSlot,hasData:byDow.some(d=>d.count>0)};
+    const topDow=[...byDow].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
+    const topSlot=[...bySlot].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
+    const maxDow=topDow[0]?.total||1;
+    const maxSlot=topSlot[0]?.total||1;
+    return {topDow,topSlot,maxDow,maxSlot,hasData:byDow.some(d=>d.count>0)};
   },[history]);
 
   const personData = useMemo(()=>{
@@ -3405,16 +3401,28 @@ function ChartsTab({ history, prices }) {
           })()}
           {historicalPattern.hasData&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Patrón <em>histórico</em></h3><span className="eyebrow">sobre todos los datos</span></div>
-              <div style={{padding:'14px 16px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                {[
-                  {label:'Mejor día',value:historicalPattern.bestDow.label,sub:`$${fmtCLP(Math.round(historicalPattern.bestDow.total))} acum · ${historicalPattern.bestDow.count} venta${historicalPattern.bestDow.count!==1?'s':''}`,icon:'📅'},
-                  {label:'Mejor hora',value:historicalPattern.bestSlot.label,sub:`$${fmtCLP(Math.round(historicalPattern.bestSlot.total))} acum · ${historicalPattern.bestSlot.count} venta${historicalPattern.bestSlot.count!==1?'s':''}`,icon:'⏰'},
-                ].map(c=>(
-                  <div key={c.label} style={{background:'var(--bg-2)',borderRadius:12,padding:'12px 14px',border:'1px solid var(--line)'}}>
-                    <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:6}}>{c.icon} {c.label}</div>
-                    <div style={{fontSize:22,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',letterSpacing:'-.01em',marginBottom:4}}>{c.value}</div>
-                    <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{c.sub}</div>
+              <div className="chart-head"><h3>Mejor <em>agenda</em></h3><span className="eyebrow">patrón histórico</span></div>
+              <div style={{padding:'12px 16px 6px'}}>
+                <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>📅 Mejores días</div>
+                {historicalPattern.topDow.map((d,i)=>(
+                  <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                    <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
+                    <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(d.total/historicalPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'var(--line-2, rgba(255,255,255,.15))',borderRadius:3,transition:'width .4s'}}/>
+                    </div>
+                    <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{padding:'4px 16px 14px'}}>
+                <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>⏰ Mejores horarios</div>
+                {historicalPattern.topSlot.map((s,i)=>(
+                  <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                    <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
+                    <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(s.total/historicalPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'var(--line-2, rgba(255,255,255,.15))',borderRadius:3,transition:'width .4s'}}/>
+                    </div>
+                    <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
                   </div>
                 ))}
               </div>
