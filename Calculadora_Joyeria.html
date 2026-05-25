@@ -3370,31 +3370,48 @@ function ChartsTab({ history, prices }) {
           })()}
           {gramsData.length>0&&(()=>{
             const totG=gramsData.reduce((s,d)=>s+d.grams,0);
-            const CAT_COLORS={cadena:'#c9a84c',micro:'#6ee7b7',italiana:'#f4a380',gf18k:'#fb923c'};
+            const GCOLORS={cadena:'#a0a0a0',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#c9a84c'};
             return(
             <div className="chart-card">
-              <div className="chart-head"><h3>Producto <em>más vendido</em></h3><span className="eyebrow">{Math.round(totG*10)/10}g total</span></div>
-              <div style={{padding:'4px 0 8px'}}>
-                {gramsData.map((d,i)=>{
+              <div className="chart-head"><h3>Gramos <em>por categoría</em></h3><span className="eyebrow">{Math.round(totG*10)/10}g total</span></div>
+              <div style={{padding:'14px 16px 6px'}}>
+                {/* Stacked proportion bar */}
+                <div style={{display:'flex',height:20,borderRadius:10,overflow:'hidden',marginBottom:18,gap:2}}>
+                  {gramsData.map(d=>{
+                    const pct=totG?d.grams/totG*100:0;
+                    const color=GCOLORS[d.key]||'#818cf8';
+                    return <div key={d.key} style={{flex:pct,background:color,minWidth:pct>0?3:0,transition:'flex .4s'}}/>;
+                  })}
+                </div>
+                {/* Category rows */}
+                {gramsData.map(d=>{
                   const pct=totG?Math.round(d.grams/totG*100):0;
-                  const color=CAT_COLORS[d.key]||'#818cf8';
-                  const label=d.name.replace(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu,'').trim();
-                  const emoji=d.name.match(/[\u{1F300}-\u{1FFFF}\u{2600}-\u{27FF}]/gu)?.[0]||'';
+                  const color=GCOLORS[d.key]||'#818cf8';
+                  const emoji=d.name.match(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/u)?.[0]||'';
+                  const label=d.name.replace(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu,'').trim();
                   return(
-                  <div key={d.key} style={{padding:'10px 16px',borderBottom:'1px solid var(--line)'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
-                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:'var(--ink-dim)'}}>{emoji} {label}</span>
+                  <div key={d.key} style={{marginBottom:14}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:20,lineHeight:1}}>{emoji}</span>
+                        <span style={{fontWeight:700,fontSize:14,color}}>{label}</span>
+                      </div>
                       <div style={{display:'flex',alignItems:'baseline',gap:8}}>
                         <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>{pct}%</span>
-                        <span style={{fontFamily:'var(--mono)',fontSize:14,fontWeight:700,color}}>{d.grams}g</span>
+                        <span style={{fontFamily:'var(--mono)',fontSize:18,fontWeight:700,color,letterSpacing:'-.01em'}}>{d.grams}g</span>
                       </div>
                     </div>
-                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3}}/>
+                    <div style={{height:5,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3,transition:'width .4s'}}/>
                     </div>
                   </div>
                   );
                 })}
+                {/* Total row */}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:10,borderTop:'1px solid var(--line)',marginTop:4}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.18em',textTransform:'uppercase',color:'var(--ink-mute)'}}>Total</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:20,fontWeight:700,color:'var(--ink)',letterSpacing:'-.01em'}}>{Math.round(totG*10)/10}g</span>
+                </div>
               </div>
             </div>
             );
@@ -3440,6 +3457,22 @@ function ChartsTab({ history, prices }) {
                         <td style={tdStyle(true,true,CAT_COLORS[d.key])}>{d.pct}%</td>
                       </tr>
                     ))}
+                    {(()=>{
+                      const totGr=productStats.reduce((s,d)=>s+d.grams,0);
+                      const totRev=productStats.reduce((s,d)=>s+d.revenue,0);
+                      const totCnt=productStats.reduce((s,d)=>s+d.count,0);
+                      const totStyle=(right,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:700,color:color||'var(--ink)',borderTop:'2px solid var(--line)',whiteSpace:'nowrap',background:'var(--bg-2)'});
+                      return(
+                      <tr>
+                        <td style={totStyle(false)}>Total</td>
+                        <td style={totStyle(true)}>{totCnt}</td>
+                        <td style={totStyle(true,'var(--gold-2)')}>{Math.round(totGr*10)/10}g</td>
+                        <td style={totStyle(true,'var(--ink-mute)'}}>—</td>
+                        <td style={totStyle(true)}>{totRev>0?fmt$(totRev):'—'}</td>
+                        <td style={totStyle(true)}>100%</td>
+                      </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
