@@ -2626,12 +2626,17 @@ function ReportsTab({ history, prices, onToggleConcretada }){
 
     // Persona que más vende (por total atendido)
     const salesByPerson={};
+    const schedByPerson={};
     for(const q of periodQuotes){
       const att=normName((q.attendant||'').trim()||EMPRESA);
       if(!salesByPerson[att]) salesByPerson[att]={count:0,total:0};
       salesByPerson[att].count++; salesByPerson[att].total+=Number(q.total)||0;
+      const sched=normName((q.scheduler||'').trim()||EMPRESA);
+      if(!schedByPerson[sched]) schedByPerson[sched]={count:0};
+      schedByPerson[sched].count++;
     }
     const personStar=Object.entries(salesByPerson).filter(([n])=>n!==EMPRESA).sort((a,b)=>b[1].total-a[1].total)[0];
+    const agendaStar=Object.entries(schedByPerson).filter(([n])=>n!==EMPRESA).sort((a,b)=>b[1].count-a[1].count)[0];
 
     // Producto estrella (por ingresos generados)
     const revenueByGroup={cadena:0,micro:0,italiana:0,gf18k:0};
@@ -2661,7 +2666,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       }
     }
 
-    return {activeDays,totalDays,projection,personStar,productStar,buySuggestion,deadStreak,isCurrentPeriod};
+    return {activeDays,totalDays,projection,personStar,agendaStar,productStar,buySuggestion,deadStreak,isCurrentPeriod};
   },[periodQuotes,summary,period,activeKey,keyFn,prices]);
 
   const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
@@ -2738,6 +2743,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         const chips=[];
         if(insights.projection) chips.push({icon:'📈',label:'Proyección del mes',value:fmt$(insights.projection),sub:'Al ritmo actual',color:'var(--gold-2)'});
         if(insights.personStar) chips.push({icon:'⭐',label:'Mayor vendedor',value:insights.personStar[0],sub:`${insights.personStar[1].count} ventas · ${fmt$(insights.personStar[1].total)}`,color:'var(--ink)'});
+        if(insights.agendaStar) chips.push({icon:'📋',label:'Más agenda',value:insights.agendaStar[0],sub:`${insights.agendaStar[1].count} cita${insights.agendaStar[1].count!==1?'s':''} agendada${insights.agendaStar[1].count!==1?'s':''}`,color:'var(--ink)'});
         if(insights.productStar) chips.push({icon:'💎',label:'Producto estrella',value:{cadena:'Cadena',micro:'Micro',italiana:'Italiana',gf18k:'GF 18K'}[insights.productStar[0]]||insights.productStar[0],sub:`${fmt$(Math.round(insights.productStar[1]))} en ingresos`,color:'var(--ink)'});
         chips.push({icon:'📅',label:'Días activos',value:`${insights.activeDays}/${insights.totalDays}`,sub:`${Math.round(insights.activeDays/insights.totalDays*100)}% de eficiencia`,color:insights.activeDays/insights.totalDays>=0.5?'var(--gold-2)':insights.activeDays/insights.totalDays>=0.3?'var(--ink)':'var(--danger)'});
         return(
@@ -3260,7 +3266,73 @@ function ChartsTab({ history, prices }) {
     return {ventas,count,ganancia,margen};
   },[visibleSales,prices]);
 
+  // Tendencia mensual — últimos 12 meses
+  const trendData = useMemo(()=>{
+    const now=new Date();
+    const months=Array(12).fill(0).map((_,i)=>{
+      const d=new Date(now.getFullYear(),now.getMonth()-(11-i),1);
+      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),total:0,ganancia:0};
+    });
+    for(const q of history){
+      if(!q.concretada) continue;
+      const m=months.find(m=>m.key===monthKey(q.at));
+      if(m){m.total+=Number(q.total)||0;m.ganancia+=quoteCostAndProfit(q,prices).profit;}
+    }
+    return months;
+  },[history,prices]);
+
+  // Heatmap día × hora — todos los datos
+  const heatmapData = useMemo(()=>{
+    const DAYS=['L','M','X','J','V','S','D'];
+    const matrix=Array(7).fill(0).map((_,dow)=>Array(12).fill(0).map((_,slot)=>({dow,slot,total:0,count:0})));
+    for(const q of history){
+      if(!q.concretada) continue;
+      const d=new Date(q.at);
+      const dow=(d.getDay()+6)%7;
+      const slot=Math.min(11,Math.floor(d.getHours()/2));
+      matrix[dow][slot].total+=Number(q.total)||0;
+      matrix[dow][slot].count++;
+    }
+    const maxVal=Math.max(...matrix.flat().map(c=>c.total),1);
+    return {matrix,maxVal,DAYS};
+  },[history]);
+
+  // Mix de ingresos por categoría — últimos 6 meses
+  const mixData = useMemo(()=>{
+    const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
+    const now=new Date();
+    const months=Array(6).fill(0).map((_,i)=>{
+      const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);
+      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),cadena:0,micro:0,italiana:0,gf18k:0,total:0};
+    });
+    for(const q of history){
+      if(!q.concretada) continue;
+      const m=months.find(m=>m.key===monthKey(q.at)); if(!m) continue;
+      for(const l of(q.lines||[])){
+        const grp=catToGroup[l.category]; if(!grp) continue;
+        const price=(prices[l.category]?.prices[q.tier])||0;
+        const rev=(Number(l.grams)||0)*price;
+        m[grp]+=rev; m.total+=rev;
+      }
+    }
+    return months;
+  },[history,prices]);
+
+  // Comparativa por persona — período actual
+  const personComparison = useMemo(()=>{
+    const byPerson={};
+    for(const q of visibleSales){
+      const att=normName((q.attendant||'').trim()||EMPRESA);
+      if(!byPerson[att]) byPerson[att]={total:0,count:0};
+      byPerson[att].total+=Number(q.total)||0; byPerson[att].count++;
+    }
+    const rows=Object.entries(byPerson).map(([name,v])=>({name,...v})).sort((a,b)=>b.total-a.total);
+    const maxVal=rows[0]?.total||1;
+    return {rows,maxVal};
+  },[visibleSales]);
+
   const salesRef=useRef(null);
+  const trendRef=useRef(null);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
@@ -3296,7 +3368,51 @@ function ChartsTab({ history, prices }) {
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
   },[timeData]);
 
-
+  useEffect(()=>{
+    const canvas=trendRef.current; if(!canvas) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=160;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    const gold2=getCssVar('--gold-2'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
+    ctx.clearRect(0,0,W,H);
+    const data=trendData.filter(d=>d.total>0);
+    const all=trendData;
+    const n=all.length; if(!n) return;
+    const maxVal=Math.max(...all.map(d=>d.total),1);
+    const pad={top:16,right:10,bottom:22,left:10};
+    const cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+    ctx.strokeStyle=lineC; ctx.lineWidth=0.5;
+    [0,0.5,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
+    const drawLine=(vals,color,lw,fill)=>{
+      const pts=vals.map((v,i)=>pt(i,v));
+      if(fill){
+        const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+        grad.addColorStop(0,color+'33'); grad.addColorStop(1,color+'00');
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x,pad.top+cH);
+        ctx.lineTo(pts[0].x,pts[0].y);
+        for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+        ctx.lineTo(pts[pts.length-1].x,pad.top+cH); ctx.closePath();
+        ctx.fillStyle=grad; ctx.fill();
+      }
+      ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.stroke();
+      // dot on peak
+      const peakI=vals.indexOf(Math.max(...vals));
+      if(peakI>=0&&vals[peakI]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(pts[peakI].x,pts[peakI].y,3,0,Math.PI*2);ctx.fill();}
+    };
+    drawLine(all.map(d=>d.total),gold2,2,true);
+    drawLine(all.map(d=>Math.max(0,d.ganancia)),'#4ade80',1.5,false);
+    all.forEach((d,i)=>{
+      if(i%2===0||i===n-1){ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';const x=pad.left+(n<2?cW/2:i/(n-1)*cW);ctx.fillText(d.label.toUpperCase(),x,H-4);}
+    });
+    const ly=H-14; ctx.font=`500 7px 'Montserrat',sans-serif`;
+    ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-6,8,6);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+11,ly);
+    ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+48,ly-6,8,6);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+59,ly);
+  },[trendData]);
 
   const hasData=history.some(q=>q.concretada);
   return (
@@ -3428,6 +3544,110 @@ function ChartsTab({ history, prices }) {
               </div>
             </div>
           )}
+
+          {/* ── comparativa por persona ── */}
+          {personComparison.rows.length>1&&(()=>{
+            const PAL2=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8'];
+            return(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Ventas <em>por persona</em></h3><span className="eyebrow">{navRange.label}</span></div>
+              <div style={{padding:'10px 16px 14px'}}>
+                {personComparison.rows.map((r,i)=>(
+                  <div key={r.name} style={{marginBottom:10}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:PAL2[i%PAL2.length]}}>{r.name}</span>
+                      <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>${fmtCLP(r.total)} · {r.count} {r.count===1?'venta':'ventas'}</span>
+                    </div>
+                    <div style={{height:7,borderRadius:4,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(r.total/personComparison.maxVal*100)}%`,background:PAL2[i%PAL2.length],borderRadius:4,transition:'width .4s'}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            );
+          })()}
+
+          {/* ── mix de ingresos por categoría (últimos 6 meses) ── */}
+          {(()=>{
+            const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa'};
+            const active=mixData.filter(m=>m.total>0);
+            if(!active.length) return null;
+            const maxM=Math.max(...active.map(m=>m.total),1);
+            return(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Mix <em>de ingresos</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div style={{padding:'12px 16px 6px'}}>
+                <div style={{display:'flex',gap:6,alignItems:'flex-end',height:80,marginBottom:10}}>
+                  {mixData.map(m=>{
+                    const tot=m.total||0;
+                    const cats=[['cadena',m.cadena],['micro',m.micro],['italiana',m.italiana],['gf18k',m.gf18k]].filter(([k,v])=>v>0);
+                    return(
+                    <div key={m.key} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',alignItems:'stretch',gap:1}}>
+                      {cats.map(([k,v])=>(
+                        <div key={k} style={{background:MCOLORS[k],borderRadius:2,height:`${Math.round(v/maxM*72)}px`,minHeight:v>0?2:0,transition:'height .4s'}}/>
+                      ))}
+                      <div style={{fontFamily:'var(--mono)',fontSize:7,textAlign:'center',color:'var(--ink-mute)',marginTop:4,textTransform:'uppercase'}}>{m.label}</div>
+                    </div>
+                    );
+                  })}
+                </div>
+                <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+                  {Object.entries(MCOLORS).map(([k,c])=>(
+                    <div key={k} style={{display:'flex',alignItems:'center',gap:5}}>
+                      <div style={{width:8,height:8,borderRadius:2,background:c}}/>
+                      <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'capitalize'}}>{k==='gf18k'?'GF 18K':k.charAt(0).toUpperCase()+k.slice(1)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+
+          {/* ── línea de tendencia mensual ── */}
+          {trendData.some(d=>d.total>0)&&(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Tendencia <em>mensual</em></h3><span className="eyebrow">últimos 12 meses</span></div>
+              <div className="chart-body" style={{padding:'4px 0 0'}}>
+                <div className="chart-canvas-wrap">
+                  <canvas ref={trendRef} style={{height:160}}/>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── heatmap día × hora ── */}
+          {heatmapData.matrix.flat().some(c=>c.count>0)&&(()=>{
+            const SLOTS=Array(12).fill(0).map((_,i)=>`${String(i*2).padStart(2,'0')}h`);
+            return(
+            <div className="chart-card" style={{overflow:'hidden'}}>
+              <div className="chart-head"><h3>Heatmap <em>día × hora</em></h3><span className="eyebrow">todos los datos</span></div>
+              <div style={{padding:'10px 12px 14px',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
+                <div style={{display:'grid',gridTemplateColumns:`28px repeat(7,1fr)`,gap:3,minWidth:280}}>
+                  <div/>
+                  {heatmapData.DAYS.map(d=>(
+                    <div key={d} style={{fontFamily:'var(--mono)',fontSize:9,textAlign:'center',color:'var(--ink-mute)',fontWeight:700,paddingBottom:4}}>{d}</div>
+                  ))}
+                  {SLOTS.map((slotLabel,slot)=>[
+                    <div key={`l${slot}`} style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--ink-mute)',display:'flex',alignItems:'center',paddingRight:4}}>{slotLabel}</div>,
+                    ...heatmapData.DAYS.map((_,dow)=>{
+                      const cell=heatmapData.matrix[dow][slot];
+                      const intensity=cell.total/heatmapData.maxVal;
+                      const bg=intensity>0?`rgba(201,168,76,${Math.max(0.08,intensity*0.9)})`:'var(--bg-2)';
+                      return(
+                        <div key={`${dow}-${slot}`} style={{aspectRatio:'1',borderRadius:4,background:bg,border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          {cell.count>0&&<span style={{fontFamily:'var(--mono)',fontSize:7,color:'var(--ink-dim)',fontWeight:700}}>{cell.count}</span>}
+                        </div>
+                      );
+                    })
+                  ])}
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+
         </div>
       )}
     </div>
