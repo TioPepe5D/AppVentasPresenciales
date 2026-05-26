@@ -3441,40 +3441,82 @@ function ChartsTab({ history, prices }) {
 
   const salesRef=useRef(null);
   const trendRef=useRef(null);
+  const mixRef=useRef(null);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
     const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=220;
     canvas.width=W*dpr;canvas.height=H*dpr;
     const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-    const gold2=getCssVar('--gold-2'),lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute'),inkDim=getCssVar('--ink-dim');
+    const gold2=getCssVar('--gold-2'),lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
     ctx.clearRect(0,0,W,H);
-    const pad={top:20,right:10,bottom:44,left:10},chartW=W-pad.left-pad.right,chartH=H-pad.top-pad.bottom;
+    const pad={top:20,right:16,bottom:44,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
     const n=timeData.length; if(!n) return;
-    const maxVal=Math.max(...timeData.map(d=>d.total),1),slotW=chartW/n,barW=Math.max(3,slotW*0.3),gap=Math.max(1,barW*0.25);
+    const maxVal=Math.max(...timeData.map(d=>d.total),1);
     ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
-    [0,.25,.5,.75,1].forEach(t=>{const y=pad.top+chartH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    [0,.25,.5,.75,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
+    const drawSeriesLine=(vals,color,lw,fill)=>{
+      const pts=vals.map((v,i)=>pt(i,v));
+      if(fill){
+        const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+        grad.addColorStop(0,color+'33');grad.addColorStop(1,color+'00');
+        ctx.beginPath();ctx.moveTo(pts[0].x,pad.top+cH);ctx.lineTo(pts[0].x,pts[0].y);
+        for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+        ctx.lineTo(pts[pts.length-1].x,pad.top+cH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+      }
+      ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.stroke();
+      pts.forEach((p,i)=>{if(vals[i]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();}});
+    };
+    drawSeriesLine(timeData.map(d=>d.total),gold2,2,true);
+    drawSeriesLine(timeData.map(d=>Math.max(0,d.ganancia)),'#4ade80',1.5,false);
     timeData.forEach((d,i)=>{
-      const cx=pad.left+slotW*i+slotW/2;
-      const drawBar=(val,xOff,color)=>{
-        const bH=val>0?Math.max(3,(val/maxVal)*chartH):0; if(!bH) return;
-        const x=cx+xOff,y=pad.top+chartH-bH,r=Math.min(3,barW/2);
-        const grad=ctx.createLinearGradient(0,y,0,pad.top+chartH);
-        grad.addColorStop(0,color);grad.addColorStop(1,color+'18');
-        ctx.fillStyle=grad;ctx.beginPath();
-        ctx.moveTo(x+r,y);ctx.lineTo(x+barW-r,y);ctx.quadraticCurveTo(x+barW,y,x+barW,y+r);
-        ctx.lineTo(x+barW,pad.top+chartH);ctx.lineTo(x,pad.top+chartH);ctx.lineTo(x,y+r);
-        ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
-      };
-      drawBar(d.total,-barW-gap/2,gold2);
-      drawBar(Math.max(0,d.ganancia),gap/2,'#4ade80');
       const showLabel=n<=14||i%Math.ceil(n/14)===0||i===n-1;
-      if(showLabel){ctx.fillStyle=inkMute;ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),cx,H-6);}
+      if(showLabel){const x=pad.left+(n<2?cW/2:i/(n-1)*cW);ctx.fillStyle=inkMute;ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(d.label.toUpperCase(),x,H-6);}
     });
     const ly=H-16;ctx.font=`500 8px 'Montserrat',sans-serif`;
     ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-7,10,7);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+13,ly);
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+55,ly-7,10,7);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+68,ly);
   },[timeData]);
+
+  useEffect(()=>{
+    const canvas=mixRef.current; if(!canvas) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=160;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    const lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
+    ctx.clearRect(0,0,W,H);
+    const pad={top:16,right:16,bottom:30,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+    const n=mixData.length; if(!n) return;
+    const SERIES=[{k:'cadena',color:'#c9a84c'},{k:'micro',color:'#38bdf8'},{k:'italiana',color:'#4ade80'},{k:'gf18k',color:'#a78bfa'}];
+    const allVals=mixData.flatMap(m=>SERIES.map(s=>m[s.k]||0));
+    const maxVal=Math.max(...allVals,1);
+    ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
+    [0,0.5,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
+    SERIES.forEach(({k,color})=>{
+      const vals=mixData.map(m=>m[k]||0);
+      if(!vals.some(v=>v>0)) return;
+      const pts=vals.map((v,i)=>pt(i,v));
+      const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+      grad.addColorStop(0,color+'22');grad.addColorStop(1,color+'00');
+      ctx.beginPath();ctx.moveTo(pts[0].x,pad.top+cH);ctx.lineTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.lineTo(pts[pts.length-1].x,pad.top+cH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+      ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.stroke();
+      pts.forEach((p,i)=>{if(vals[i]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();}});
+    });
+    mixData.forEach((m,i)=>{
+      const x=pad.left+(n<2?cW/2:i/(n-1)*cW);
+      ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(m.label.toUpperCase(),x,H-4);
+    });
+  },[mixData]);
 
   useEffect(()=>{
     const canvas=trendRef.current; if(!canvas) return;
@@ -3614,37 +3656,23 @@ function ChartsTab({ history, prices }) {
           })()}
 
           {/* ── mix de ingresos por categoría (últimos 6 meses) ── */}
-          {(()=>{
+          {mixData.some(m=>m.total>0)&&(()=>{
             const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa'};
-            const active=mixData.filter(m=>m.total>0);
-            if(!active.length) return null;
-            const maxM=Math.max(...active.map(m=>m.total),1);
             return(
             <div className="chart-card">
               <div className="chart-head"><h3>Mix <em>de ingresos</em></h3><span className="eyebrow">últimos 6 meses</span></div>
-              <div style={{padding:'12px 16px 6px'}}>
-                <div style={{display:'flex',gap:6,alignItems:'flex-end',height:80,marginBottom:10}}>
-                  {mixData.map(m=>{
-                    const tot=m.total||0;
-                    const cats=[['cadena',m.cadena],['micro',m.micro],['italiana',m.italiana],['gf18k',m.gf18k]].filter(([k,v])=>v>0);
-                    return(
-                    <div key={m.key} style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'flex-end',alignItems:'stretch',gap:1}}>
-                      {cats.map(([k,v])=>(
-                        <div key={k} style={{background:MCOLORS[k],borderRadius:2,height:`${Math.round(v/maxM*72)}px`,minHeight:v>0?2:0,transition:'height .4s'}}/>
-                      ))}
-                      <div style={{fontFamily:'var(--mono)',fontSize:7,textAlign:'center',color:'var(--ink-mute)',marginTop:4,textTransform:'uppercase'}}>{m.label}</div>
-                    </div>
-                    );
-                  })}
+              <div className="chart-body" style={{padding:'4px 0 0'}}>
+                <div className="chart-canvas-wrap">
+                  <canvas ref={mixRef} style={{height:160}}/>
                 </div>
-                <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-                  {Object.entries(MCOLORS).map(([k,c])=>(
-                    <div key={k} style={{display:'flex',alignItems:'center',gap:5}}>
-                      <div style={{width:8,height:8,borderRadius:2,background:c}}/>
-                      <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'capitalize'}}>{k==='gf18k'?'GF 18K':k.charAt(0).toUpperCase()+k.slice(1)}</span>
-                    </div>
-                  ))}
-                </div>
+              </div>
+              <div style={{display:'flex',gap:12,flexWrap:'wrap',padding:'0 16px 14px'}}>
+                {Object.entries(MCOLORS).map(([k,c])=>(
+                  <div key={k} style={{display:'flex',alignItems:'center',gap:5}}>
+                    <div style={{width:8,height:8,borderRadius:2,background:c}}/>
+                    <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'capitalize'}}>{k==='gf18k'?'GF 18K':k.charAt(0).toUpperCase()+k.slice(1)}</span>
+                  </div>
+                ))}
               </div>
             </div>
             );
