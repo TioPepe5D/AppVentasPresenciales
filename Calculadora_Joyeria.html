@@ -3500,52 +3500,34 @@ function ChartsTab({ history, prices }) {
   },[visibleSales,prices]);
 
   // Tendencia mensual — últimos 12 meses
-  const trendData = useMemo(()=>{
-    const now=new Date();
-    const months=Array(12).fill(0).map((_,i)=>{
-      const d=new Date(now.getFullYear(),now.getMonth()-(11-i),1);
-      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),total:0,ganancia:0};
-    });
-    for(const q of history){
-      if(!q.concretada) continue;
-      const m=months.find(m=>m.key===monthKey(q.at));
-      if(m){m.total+=Number(q.total)||0;m.ganancia+=quoteCostAndProfit(q,prices).profit;}
-    }
-    return months;
-  },[history,prices]);
-
-  // Vendedores — todos los datos históricos
+  // Vendedores — mismo período que el filtro activo
   const vendedoresMonthly = useMemo(()=>{
-    const now=new Date();
-    const months=Array(6).fill(0).map((_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);return{key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.','')}; });
+    const labels=timeData.map(b=>b.label);
     const byP={};
-    for(const q of history){
-      if(!q.concretada) continue;
-      const mIdx=months.findIndex(m=>m.key===monthKey(q.at)); if(mIdx<0) continue;
+    for(const q of visibleSales){
+      const bIdx=timeData.findIndex(b=>q.at>=b.start&&q.at<b.end); if(bIdx<0) continue;
       const k=normName((q.attendant||'').trim()||EMPRESA);
-      if(!byP[k]) byP[k]={name:k,vals:Array(6).fill(0)};
-      byP[k].vals[mIdx]+=Number(q.total)||0;
+      if(!byP[k]) byP[k]={name:k,vals:Array(timeData.length).fill(0)};
+      byP[k].vals[bIdx]+=Number(q.total)||0;
     }
     const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
     const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
-    return {labels:months.map(m=>m.label),series};
-  },[history]);
+    return {labels,series};
+  },[timeData,visibleSales]);
 
   const agendadoresMonthly = useMemo(()=>{
-    const now=new Date();
-    const months=Array(6).fill(0).map((_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);return{key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.','')}; });
+    const labels=timeData.map(b=>b.label);
     const byP={};
-    for(const q of history){
-      if(!q.concretada) continue;
-      const mIdx=months.findIndex(m=>m.key===monthKey(q.at)); if(mIdx<0) continue;
+    for(const q of visibleSales){
+      const bIdx=timeData.findIndex(b=>q.at>=b.start&&q.at<b.end); if(bIdx<0) continue;
       const k=normName((q.scheduler||'').trim()||EMPRESA);
-      if(!byP[k]) byP[k]={name:k,vals:Array(6).fill(0)};
-      byP[k].vals[mIdx]++;
+      if(!byP[k]) byP[k]={name:k,vals:Array(timeData.length).fill(0)};
+      byP[k].vals[bIdx]++;
     }
     const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
     const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
-    return {labels:months.map(m=>m.label),series};
-  },[history]);
+    return {labels,series};
+  },[timeData,visibleSales]);
 
   // Mix de ingresos por categoría — últimos 6 meses
   const mixData = useMemo(()=>{
@@ -3712,8 +3694,7 @@ function ChartsTab({ history, prices }) {
     const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
     const gold2=getCssVar('--gold-2'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
     ctx.clearRect(0,0,W,H);
-    const data=trendData.filter(d=>d.total>0);
-    const all=trendData;
+    const all=timeData;
     const n=all.length; if(!n) return;
     const maxVal=Math.max(...all.map(d=>d.total),1);
     const pad={top:16,right:10,bottom:22,left:10};
@@ -3749,7 +3730,7 @@ function ChartsTab({ history, prices }) {
     const ly=H-14; ctx.font=`500 7px 'Montserrat',sans-serif`;
     ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-6,8,6);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+11,ly);
     ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+48,ly-6,8,6);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+59,ly);
-  },[trendData]);
+  },[timeData]);
 
   const hasData=history.some(q=>q.concretada);
   return (
@@ -3812,10 +3793,10 @@ function ChartsTab({ history, prices }) {
             );
           })()}
 
-          {/* ── línea de tendencia mensual ── */}
-          {trendData.some(d=>d.total>0)&&(
+          {/* ── línea de tendencia ── */}
+          {timeData.some(d=>d.total>0)&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Tendencia <em>mensual</em></h3><span className="eyebrow">últimos 12 meses</span></div>
+              <div className="chart-head"><h3>Tendencia <em>de ventas</em></h3><span className="eyebrow">{navRange.label}</span></div>
               <div className="chart-body" style={{padding:'4px 0 0'}}>
                 <div className="chart-canvas-wrap">
                   <canvas ref={trendRef} style={{height:160}}/>
@@ -3861,7 +3842,7 @@ function ChartsTab({ history, prices }) {
           {/* ── rendimiento vendedores — líneas mensuales ── */}
           {vendedoresMonthly.series.length>0&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Rendimiento <em>vendedores</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div className="chart-head"><h3>Rendimiento <em>vendedores</em></h3><span className="eyebrow">{navRange.label}</span></div>
               <div className="chart-body" style={{padding:'4px 0 0'}}>
                 <div className="chart-canvas-wrap">
                   <canvas ref={vendRef} style={{height:180}}/>
@@ -3873,7 +3854,7 @@ function ChartsTab({ history, prices }) {
           {/* ── actividad agendadores — líneas mensuales ── */}
           {agendadoresMonthly.series.length>0&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Actividad <em>agendadores</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div className="chart-head"><h3>Actividad <em>agendadores</em></h3><span className="eyebrow">{navRange.label}</span></div>
               <div className="chart-body" style={{padding:'4px 0 0'}}>
                 <div className="chart-canvas-wrap">
                   <canvas ref={agendRef} style={{height:160}}/>
