@@ -3835,6 +3835,7 @@ function App(){
   const isValidLine = (l) => {
     if (l.category === INSUMO_KEY) return Number(l.insumoCost) > 0 || !!(l.insumoName && l.insumoName.trim());
     if (l.category === LOTE_KEY)   return Number(l.lotePrice) > 0;
+    if (l.isGift)                  return Number(l.grams) > 0;
     return Number(l.grams) > 0 && Number(l.customPrice) > 0;
   };
   const hasValidLines = lines.some(isValidLine);
