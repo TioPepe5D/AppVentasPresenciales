@@ -1144,9 +1144,6 @@ const LOTE_GROUP_MAP = {
   gf18k:    'gf',
 };
 const buildMessagePiezas = (validLines, prices) => {
-  const gifts    = validLines.filter(l => l.isGift);
-  const nonGifts = validLines.filter(l => !l.isGift);
-
   const sums = new Map();
   const order = [];
   const ungrouped = [];
@@ -1159,7 +1156,8 @@ const buildMessagePiezas = (validLines, prices) => {
     sums.set(group.key, sums.get(group.key) + grams);
   };
 
-  for (const l of nonGifts) {
+  // Todas las líneas (incluidos regalos) se agrupan por categoría para el costo interno
+  for (const l of validLines) {
     if (l.category === INSUMO_KEY) { insumos.push(l); continue; }
     if (l.category === LOTE_KEY) {
       const gramsMap = l.loteGramsMap || {};
@@ -1176,11 +1174,7 @@ const buildMessagePiezas = (validLines, prices) => {
       sums.set(group.key, sums.get(group.key) + grams);
     } else {
       const cat = prices[l.category];
-      ungrouped.push({
-        grams,
-        label: cat?.name || l.category,
-        emoji: emojiForCategory(l.category, cat)
-      });
+      ungrouped.push({ grams, label: cat?.name || l.category, emoji: emojiForCategory(l.category, cat) });
     }
   }
   const lines = order.map(g => `${fmtGrams(sums.get(g.key))} | ${g.emoji} ${g.label}`);
@@ -1192,19 +1186,6 @@ const buildMessagePiezas = (validLines, prices) => {
     const nameStartsWithNumber = /^\d/.test(name.trim());
     const qtyPrefix = (qty > 1 && !nameStartsWithNumber) ? `${qty} ` : nameStartsWithNumber ? '' : '';
     lines.push(`💎 ${qtyPrefix}${name}: $${fmtCLP(cost * qty)}`);
-  }
-  for (const g of gifts) {
-    if (g.category === INSUMO_KEY) {
-      const cost = Number(g.insumoCost) || Number(g.insumoPrice) || 0;
-      const name = g.insumoName || 'Insumo';
-      lines.push(`🎁 Regalo · ${name}: $${fmtCLP(cost)}`);
-    } else {
-      const cat       = prices[g.category];
-      const grams     = Number(g.grams) || 0;
-      const costPerG  = Number(cat?.cost) || 0;
-      const catName   = cat?.name || g.category;
-      lines.push(`🎁 Regalo · ${catName} ${grams}g × $${fmtCLP(costPerG)}/g → Costo: $${fmtCLP(costPerG * grams)}`);
-    }
   }
   return lines.join('\n');
 };
@@ -1826,7 +1807,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
           {lines.map((line, i) => {
             const isInsumo = line.category === INSUMO_KEY;
             const isLote   = line.category === LOTE_KEY;
-            const isGift   = !!line.isGift;
+            const isGift   = !!line.isGift && !isLote;
             const cat = (!isInsumo && !isLote) ? prices[line.category] : null;
             const tierPrice = cat ? cat.prices[totals.tier] : 0;
             const price = (!isInsumo && !isLote) ? (Number(line.customPrice) || 0) : tierPrice;
@@ -1844,7 +1825,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     <div className="field line-category-field" style={{gridColumn:'1 / -1'}}>
                       <label>Categoría</label>
                       <div className="control">
-                        <select value={line.category} onChange={e => updateLine(line.id, { category: e.target.value })}>
+                        <select value={line.category} onChange={e => {
+                          const v = e.target.value;
+                          updateLine(line.id, { category: v, ...(v === LOTE_KEY ? { isGift: false } : {}) });
+                        }}>
                           {CATEGORY_ORDER.map(k => (
                             <option key={k} value={k}>{prices[k].name}</option>
                           ))}
@@ -1990,7 +1974,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     <div className="field">
                       <label>Categoría</label>
                       <div className="control">
-                        <select value={line.category} onChange={e => updateLine(line.id, { category: e.target.value })}>
+                        <select value={line.category} onChange={e => {
+                          const v = e.target.value;
+                          updateLine(line.id, { category: v, ...(v === LOTE_KEY ? { isGift: false } : {}) });
+                        }}>
                           {CATEGORY_ORDER.map(k => (
                             <option key={k} value={k}>{prices[k].name}</option>
                           ))}
