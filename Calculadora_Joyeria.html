@@ -3966,11 +3966,14 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     const linesText = q.lines.map(l => {
       if (l.isGift) {
         if (l.category === INSUMO_KEY) {
-          const name = l.insumoName || 'Insumo';
-          return `• ${name} 💎  🎁 Regalo`;
+          const name   = l.insumoName || 'Insumo';
+          const qty    = Number(l.insumoQty) || 1;
+          const qtyStr = qty > 1 ? `${qty}× ` : '';
+          return `• ${qtyStr}${name} 💎  🎁 Regalo`;
         }
         const cat = p[l.category];
-        return `• ${cat ? cat.name : l.category}  🎁 Regalo`;
+        const grams = Number(l.grams) || 0;
+        return `• ${cat ? cat.name : l.category}  ${grams}g  🎁 Regalo`;
       }
       if (l.category === INSUMO_KEY) {
         const qty     = Number(l.insumoQty) || 1;
