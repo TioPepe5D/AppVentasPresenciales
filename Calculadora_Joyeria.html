@@ -3500,8 +3500,8 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(timeData.length).fill(0)};
       byP[k].vals[bIdx]+=Number(q.total)||0;
     }
-    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
-    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6'];
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,4).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
     return {labels,series};
   },[timeData,visibleSales]);
 
@@ -3514,41 +3514,35 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(timeData.length).fill(0)};
       byP[k].vals[bIdx]++;
     }
-    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
-    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6'];
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,4).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
     return {labels,series};
   },[timeData,visibleSales]);
 
   // Mix de ingresos por categoría — últimos 6 meses
   const mixData = useMemo(()=>{
     const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
-    const now=new Date();
-    const months=Array(6).fill(0).map((_,i)=>{
-      const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);
-      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),cadena:0,micro:0,italiana:0,gf18k:0,insumos:0,total:0};
-    });
-    for(const q of history){
-      if(!q.concretada) continue;
-      const m=months.find(m=>m.key===monthKey(q.at)); if(!m) continue;
+    const buckets=timeData.map(b=>({...b,cadena:0,micro:0,italiana:0,gf18k:0,insumos:0,total:0}));
+    for(const q of visibleSales){
+      const bIdx=buckets.findIndex(b=>q.at>=b.start&&q.at<b.end); if(bIdx<0) continue;
       for(const l of(q.lines||[])){
         if(l.isGift) continue;
         if(l.category===INSUMO_KEY){
           const val=(l.insumoValor!==undefined&&l.insumoValor!==null&&l.insumoValor!=='')?Number(l.insumoValor):(Number(l.insumoCost)||0);
           const qty=Number(l.insumoQty)||1;
-          m.insumos+=val*qty; m.total+=val*qty;
+          buckets[bIdx].insumos+=val*qty; buckets[bIdx].total+=val*qty;
         } else {
           const grp=catToGroup[l.category]; if(!grp) continue;
           const price=(prices[l.category]?.prices[q.tier])||0;
           const rev=(Number(l.grams)||0)*price;
-          m[grp]+=rev; m.total+=rev;
+          buckets[bIdx][grp]+=rev; buckets[bIdx].total+=rev;
         }
       }
     }
-    return months;
-  },[history,prices]);
+    return buckets;
+  },[timeData,visibleSales,prices]);
 
   const salesRef=useRef(null);
-  const trendRef=useRef(null);
   const mixRef=useRef(null);
   const vendRef=useRef(null);
   const agendRef=useRef(null);
@@ -3635,18 +3629,19 @@ function ChartsTab({ history, prices }) {
     const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
     const lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
     ctx.clearRect(0,0,W,H);
-    const legH=data.series.length>3?28:18;
+    const series=data.series.slice(0,4);
+    const legH=series.length>2?28:18;
     const pad={top:14,right:16,bottom:20+legH,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
     const n=data.labels.length; if(!n) return;
-    const allVals=data.series.flatMap(s=>s.vals);
+    const allVals=series.flatMap(s=>s.vals);
     const maxVal=Math.max(...allVals,1);
     ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
     [0,0.5,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
     const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
-    data.series.forEach(({vals,color})=>{
+    series.forEach(({vals,color})=>{
       const pts=vals.map((v,i)=>pt(i,v));
       const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
-      grad.addColorStop(0,color+'1a');grad.addColorStop(1,color+'00');
+      grad.addColorStop(0,color+'12');grad.addColorStop(1,color+'00');
       ctx.beginPath();ctx.moveTo(pts[0].x,pad.top+cH);ctx.lineTo(pts[0].x,pts[0].y);
       for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
       ctx.lineTo(pts[pts.length-1].x,pad.top+cH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
@@ -3654,17 +3649,21 @@ function ChartsTab({ history, prices }) {
       ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
       for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
       ctx.stroke();
-      pts.forEach((p,i)=>{if(vals[i]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();}});
+      // dot only at peak
+      const peakI=vals.indexOf(Math.max(...vals));
+      if(peakI>=0&&vals[peakI]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(pts[peakI].x,pts[peakI].y,3.5,0,Math.PI*2);ctx.fill();}
     });
+    const step=n>20?Math.ceil(n/10):n>10?2:1;
     data.labels.forEach((lbl,i)=>{
+      if(i%step!==0&&i!==n-1) return;
       const x=pad.left+(n<2?cW/2:i/(n-1)*cW);
       ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(lbl.toUpperCase(),x,pad.top+cH+14);
     });
-    // legend
-    const cols=data.series.length>3?2:1;
-    const perCol=Math.ceil(data.series.length/cols);
+    // legend 2-col
+    const cols=series.length>2?2:1;
+    const perCol=Math.ceil(series.length/cols);
     const colW=cW/cols;
-    data.series.forEach(({name,color},i)=>{
+    series.forEach(({name,color},i)=>{
       const col=Math.floor(i/perCol),row=i%perCol;
       const lx=pad.left+col*colW,ly=pad.top+cH+20+row*12;
       ctx.fillStyle=color;ctx.beginPath();ctx.arc(lx+4,ly-4,3,0,Math.PI*2);ctx.fill();
@@ -3676,51 +3675,6 @@ function ChartsTab({ history, prices }) {
 
   useEffect(()=>{ drawMultiLine(vendRef.current,180,vendedoresMonthly,null); },[vendedoresMonthly]);
   useEffect(()=>{ drawMultiLine(agendRef.current,160,agendadoresMonthly,null); },[agendadoresMonthly]);
-
-  useEffect(()=>{
-    const canvas=trendRef.current; if(!canvas) return;
-    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth,H=160;
-    canvas.width=W*dpr; canvas.height=H*dpr;
-    const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
-    const gold2=getCssVar('--gold-2'),inkMute=getCssVar('--ink-mute'),lineC=getCssVar('--line');
-    ctx.clearRect(0,0,W,H);
-    const all=timeData;
-    const n=all.length; if(!n) return;
-    const maxVal=Math.max(...all.map(d=>d.total),1);
-    const pad={top:16,right:10,bottom:22,left:10};
-    const cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
-    ctx.strokeStyle=lineC; ctx.lineWidth=0.5;
-    [0,0.5,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
-    const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
-    const drawLine=(vals,color,lw,fill)=>{
-      const pts=vals.map((v,i)=>pt(i,v));
-      if(fill){
-        const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
-        grad.addColorStop(0,color+'33'); grad.addColorStop(1,color+'00');
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x,pad.top+cH);
-        ctx.lineTo(pts[0].x,pts[0].y);
-        for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
-        ctx.lineTo(pts[pts.length-1].x,pad.top+cH); ctx.closePath();
-        ctx.fillStyle=grad; ctx.fill();
-      }
-      ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.lineCap='round'; ctx.lineJoin='round';
-      ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
-      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
-      ctx.stroke();
-      // dot on peak
-      const peakI=vals.indexOf(Math.max(...vals));
-      if(peakI>=0&&vals[peakI]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(pts[peakI].x,pts[peakI].y,3,0,Math.PI*2);ctx.fill();}
-    };
-    drawLine(all.map(d=>d.total),gold2,2,true);
-    drawLine(all.map(d=>Math.max(0,d.ganancia)),'#4ade80',1.5,false);
-    all.forEach((d,i)=>{
-      if(i%2===0||i===n-1){ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';const x=pad.left+(n<2?cW/2:i/(n-1)*cW);ctx.fillText(d.label.toUpperCase(),x,H-4);}
-    });
-    const ly=H-14; ctx.font=`500 7px 'Montserrat',sans-serif`;
-    ctx.fillStyle=gold2;ctx.fillRect(pad.left,ly-6,8,6);ctx.fillStyle=inkMute;ctx.textAlign='left';ctx.fillText('Venta',pad.left+11,ly);
-    ctx.fillStyle='#4ade80';ctx.fillRect(pad.left+48,ly-6,8,6);ctx.fillStyle=inkMute;ctx.fillText('Ganancia',pad.left+59,ly);
-  },[timeData]);
 
   const hasData=history.some(q=>q.concretada);
   return (
@@ -3765,7 +3719,7 @@ function ChartsTab({ history, prices }) {
             const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa',insumos:'#f472b6'};
             return(
             <div className="chart-card">
-              <div className="chart-head"><h3>Mix <em>de ingresos</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div className="chart-head"><h3>Mix <em>de ingresos</em></h3><span className="eyebrow">{navRange.label}</span></div>
               <div className="chart-body" style={{padding:'4px 0 0'}}>
                 <div className="chart-canvas-wrap">
                   <canvas ref={mixRef} style={{height:160}}/>
@@ -3782,18 +3736,6 @@ function ChartsTab({ history, prices }) {
             </div>
             );
           })()}
-
-          {/* ── línea de tendencia ── */}
-          {timeData.some(d=>d.total>0)&&(
-            <div className="chart-card">
-              <div className="chart-head"><h3>Tendencia <em>de ventas</em></h3><span className="eyebrow">{navRange.label}</span></div>
-              <div className="chart-body" style={{padding:'4px 0 0'}}>
-                <div className="chart-canvas-wrap">
-                  <canvas ref={trendRef} style={{height:160}}/>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* ── cantidad de ventas por período ── */}
           {timeData.some(d=>d.count>0)&&(()=>{
