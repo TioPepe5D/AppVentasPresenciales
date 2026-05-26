@@ -1144,6 +1144,9 @@ const LOTE_GROUP_MAP = {
   gf18k:    'gf',
 };
 const buildMessagePiezas = (validLines, prices) => {
+  const gifts    = validLines.filter(l => l.isGift);
+  const nonGifts = validLines.filter(l => !l.isGift);
+
   const sums = new Map();
   const order = [];
   const ungrouped = [];
@@ -1156,10 +1159,9 @@ const buildMessagePiezas = (validLines, prices) => {
     sums.set(group.key, sums.get(group.key) + grams);
   };
 
-  for (const l of validLines) {
+  for (const l of nonGifts) {
     if (l.category === INSUMO_KEY) { insumos.push(l); continue; }
     if (l.category === LOTE_KEY) {
-      // Los gramos de cada tipo del lote se suman al grupo correspondiente
       const gramsMap = l.loteGramsMap || {};
       for (const [typeKey, groupKey] of Object.entries(LOTE_GROUP_MAP)) {
         const g = Number(gramsMap[typeKey]) || 0;
@@ -1191,6 +1193,19 @@ const buildMessagePiezas = (validLines, prices) => {
     const qtyPrefix = (qty > 1 && !nameStartsWithNumber) ? `${qty} ` : nameStartsWithNumber ? '' : '';
     lines.push(`💎 ${qtyPrefix}${name}: $${fmtCLP(cost * qty)}`);
   }
+  for (const g of gifts) {
+    if (g.category === INSUMO_KEY) {
+      const cost = Number(g.insumoCost) || Number(g.insumoPrice) || 0;
+      const name = g.insumoName || 'Insumo';
+      lines.push(`🎁 Regalo · ${name}: $${fmtCLP(cost)}`);
+    } else {
+      const cat   = prices[g.category];
+      const grams = Number(g.grams) || 0;
+      const price = Number(g.customPrice) || 0;
+      const catName = cat?.name || g.category;
+      lines.push(`🎁 Regalo · ${catName} ${grams}g × $${fmtCLP(price)}/g → Costo: $${fmtCLP(price * grams)}`);
+    }
+  }
   return lines.join('\n');
 };
 
@@ -1209,7 +1224,7 @@ function computeTotals(lines, prices){
   }, 0);
   const totalWeight = regularWeight + loteWeight;
 
-  const calcRegularTotal = (tierIdx) => regular.reduce((s,l) => {
+  const calcRegularTotal = (tierIdx) => regular.filter(l => !l.isGift).reduce((s,l) => {
     const cat = prices[l.category];
     if (!cat) return s;
     const unitPrice = Number(l.customPrice) || 0;
@@ -1230,7 +1245,7 @@ function computeTotals(lines, prices){
   }
 
   const regularTotal = calcRegularTotal(tier);
-  const insumoTotal = lines.filter(l => l.category === INSUMO_KEY).reduce((s,l) => {
+  const insumoTotal = lines.filter(l => l.category === INSUMO_KEY && !l.isGift).reduce((s,l) => {
     const cost  = Number(l.insumoCost) || 0;
     // Si insumoValor fue ingresado (incluso como 0 = regalo), respetarlo; si no, usar cost
     const valor = (l.insumoValor !== '' && l.insumoValor !== undefined && l.insumoValor !== null)
@@ -1811,6 +1826,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
           {lines.map((line, i) => {
             const isInsumo = line.category === INSUMO_KEY;
             const isLote   = line.category === LOTE_KEY;
+            const isGift   = !!line.isGift;
             const cat = (!isInsumo && !isLote) ? prices[line.category] : null;
             const tierPrice = cat ? cat.prices[totals.tier] : 0;
             const price = (!isInsumo && !isLote) ? (Number(line.customPrice) || 0) : tierPrice;
@@ -1819,7 +1835,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
             const insumoQtyVal   = 1;
             const lotePriceVal   = Number(line.lotePrice)   || 0;
-            const sub = isInsumo ? insumoValorVal : isLote ? lotePriceVal : price * g;
+            const sub = isGift ? 0 : isInsumo ? insumoValorVal : isLote ? lotePriceVal : price * g;
             return (
               <div className={`line${isInsumo ? ' line-insumo' : ''}`} key={line.id}>
                 <span className="line-idx">N°{String(i+1).padStart(2,'0')}</span>
@@ -1883,6 +1899,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                         <button className="remove" onClick={() => removeLine(line.id)} aria-label="Eliminar línea" disabled={lines.length === 1}>
                           <Icon name="x" size={14}/>
                         </button>
+                        {!isGift && (
                         <div className="field insumo-value-field">
                           <label>Precio de venta</label>
                           <div className="control">
@@ -1894,6 +1911,15 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                             />
                           </div>
                         </div>
+                        )}
+                        <button
+                          onClick={() => updateLine(line.id, { isGift: !line.isGift })}
+                          aria-label="Marcar como regalo"
+                          style={{gridColumn:'1 / -1',display:'flex',alignItems:'center',gap:8,padding:'7px 12px',background: isGift ? 'rgba(var(--accent-rgb),.15)' : 'var(--surface-2,rgba(255,255,255,.04))',border:`1px solid ${isGift ? 'var(--gold-2)' : 'var(--line)'}`,borderRadius:8,color: isGift ? 'var(--gold-2)' : 'var(--ink-mute)',cursor:'pointer',fontSize:12,fontFamily:'var(--mono)',fontWeight: isGift ? 700 : 400,transition:'all .15s'}}
+                        >
+                          <span style={{fontSize:15}}>🎁</span>
+                          <span>{isGift ? 'REGALO · no se cobra al cliente' : 'Marcar como regalo'}</span>
+                        </button>
                         <div className="field insumo-name-old" style={{gridColumn:'1 / -1'}}>
                           <label>Nombre del insumo</label>
                           <div className="control">
@@ -1989,6 +2015,15 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     <button className="remove" onClick={() => removeLine(line.id)} aria-label="Eliminar línea" disabled={lines.length === 1}>
                       <Icon name="x" size={14}/>
                     </button>
+                    <button
+                      onClick={() => updateLine(line.id, { isGift: !line.isGift })}
+                      aria-label="Marcar como regalo"
+                      title="Marcar como regalo"
+                      style={{gridColumn:'1 / -1',display:'flex',alignItems:'center',gap:8,padding:'7px 12px',background: isGift ? 'rgba(var(--accent-rgb),.15)' : 'var(--surface-2,rgba(255,255,255,.04))',border:`1px solid ${isGift ? 'var(--gold-2)' : 'var(--line)'}`,borderRadius:8,color: isGift ? 'var(--gold-2)' : 'var(--ink-mute)',cursor:'pointer',fontSize:12,fontFamily:'var(--mono)',fontWeight: isGift ? 700 : 400,transition:'all .15s'}}
+                    >
+                      <span style={{fontSize:15}}>🎁</span>
+                      <span>{isGift ? 'REGALO · no se cobra al cliente' : 'Marcar como regalo'}</span>
+                    </button>
                   </>
                 )}
                 {!isInsumo && !isLote && (
@@ -2064,7 +2099,16 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   </div>
                 )}
                 <div className="line-meta">
-                  {isInsumo ? (
+                  {isGift ? (
+                    <>
+                      <span className="price-tag" style={{color:'var(--gold-2)'}}>
+                        {isInsumo
+                          ? `🎁 Regalo · costo $${fmtCLP(insumoCostVal)}`
+                          : `🎁 Regalo · ${g}g × $${fmtCLP(price)}/g`}
+                      </span>
+                      <span className="subtotal" style={{color:'var(--ink-mute)'}}>$0</span>
+                    </>
+                  ) : isInsumo ? (
                     <>
                       <span className="price-tag insumo-price-tag-clean">
                         {insumoQtyVal === 1 ? (
@@ -3871,14 +3915,14 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
             ? Number(l.insumoValor)
             : cost;
           const qty   = 1;
-          return { category: INSUMO_KEY, insumoName: l.insumoName || 'Insumo', insumoCost: cost, insumoValor: valor, insumoQty: qty, insumoPrice: valor, grams: 0 };
+          return { category: INSUMO_KEY, insumoName: l.insumoName || 'Insumo', insumoCost: cost, insumoValor: valor, insumoQty: qty, insumoPrice: valor, grams: 0, isGift: !!l.isGift };
         }
         if (l.category === LOTE_KEY) {
           const gramsMap    = l.loteGramsMap || {};
           const totalGrams  = Object.values(gramsMap).reduce((s,v) => s+(Number(v)||0), 0);
           return { category: LOTE_KEY, loteName: l.loteName || '', loteGramsMap: gramsMap, lotePrice: Number(l.lotePrice) || 0, grams: totalGrams };
         }
-        return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0 };
+        return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0, isGift: !!l.isGift };
       }),
       tier: totals.tier, total: savedTotal, totalWeight: totals.totalWeight,
       pago, kilero, costsSnap, totalCost, profit,
@@ -3904,7 +3948,8 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       loteName:   l.loteName    || '',
       loteGramsMap: l.loteGramsMap || {},
       lotePrice:  l.lotePrice   ? String(l.lotePrice)   : '',
-      customPrice: l.customPrice ? String(l.customPrice) : ''
+      customPrice: l.customPrice ? String(l.customPrice) : '',
+      isGift: !!l.isGift
     })));
     setTab('calc');
     showToast("Cotización cargada");
@@ -3931,6 +3976,14 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
   const shareQuote = async (q) => {
     const p = prices;
     const linesText = q.lines.map(l => {
+      if (l.isGift) {
+        if (l.category === INSUMO_KEY) {
+          const name = l.insumoName || 'Insumo';
+          return `• ${name} 💎  🎁 Regalo`;
+        }
+        const cat = p[l.category];
+        return `• ${cat ? cat.name : l.category}  🎁 Regalo`;
+      }
       if (l.category === INSUMO_KEY) {
         const qty     = Number(l.insumoQty) || 1;
         const name    = l.insumoName || 'Insumo';
