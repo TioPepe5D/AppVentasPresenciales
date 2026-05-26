@@ -2968,12 +2968,11 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         );
       })()}
 
-      {/* ── mejor día y hora de ventas ── */}
-      {salesPattern.hasData&&(
+      {/* ── mejor día / mejor hora de ventas ── */}
+      {salesPattern.topDow.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor día <em>y hora</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
-          <div style={{padding:'12px 16px 6px'}}>
-            <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>📅 Mejores días</div>
+          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
             {salesPattern.topDow.map((d,i)=>(
               <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
                 <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
@@ -2984,8 +2983,12 @@ function ReportsTab({ history, prices, onToggleConcretada }){
               </div>
             ))}
           </div>
-          <div style={{padding:'4px 16px 14px'}}>
-            <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>⏰ Mejores horarios</div>
+        </div>
+      )}
+      {salesPattern.topSlot.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
             {salesPattern.topSlot.map((s,i)=>(
               <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
                 <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
@@ -4139,23 +4142,6 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
       allItems.length === 2 ? `${allItems[0].toLowerCase()} y ${allItems[1].toLowerCase()}` :
       allItems.slice(0,-1).map(s => s.toLowerCase()).join(', ') + ` y ${allItems[allItems.length-1].toLowerCase()}`;
 
-    const tips = [
-      'Guarda cada pieza por separado en su estuche y evita el contacto con agua, perfumes y cremas para mantener el brillo por más tiempo.',
-      'Retira tus joyas antes de ducharte o hacer ejercicio y límpialas con un paño suave seco. ¡Así se mantienen perfectas! ✨',
-      'Para conservar el brillo original, guarda tus piezas separadas y aléjalas de la humedad y los productos químicos.',
-    ];
-    const tip = tips[Number(q.at || 0) % tips.length];
-
-    let resumen = firstName ? `¡Gracias, ${firstName}! ` : '¡Gracias por tu compra! ';
-    if (joined) {
-      resumen += `Tu pedido incluye ${joined}`;
-      if (hasGift) resumen += ` y un regalo especial 🎁`;
-      resumen += '.';
-    } else if (hasGift) {
-      resumen += 'Tu pedido incluye un regalo especial 🎁.';
-    }
-    resumen += `\n\n💡 ${tip}`;
-
     const sep  = '──────────────────────';
     const text =
 `✨ Detalle de ${q.client || 'cliente'}
@@ -4166,9 +4152,7 @@ ${linesText}
 ${sep}
 ⚖️  Peso total: ${fmtCLP(q.totalWeight)}g
 💰  Total: $${fmtCLP(q.total)} CLP
-${sep}
-
-${resumen}`;
+${sep}`;
 
     if (navigator.share) { try { await navigator.share({ text }); return; } catch(_){} }
     try { await navigator.clipboard.writeText(text); showToast("¡Mensaje copiado al portapapeles!"); }
