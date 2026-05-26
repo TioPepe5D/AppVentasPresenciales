@@ -2877,16 +2877,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
             <div className="chart-kpi-value" style={{fontSize:11}}>{fmt$(summary.totalCostos)}</div>
             <div className="chart-kpi-sub">Mercadería</div>
           </div>
-          <div className="chart-kpi">
-            <div className="chart-kpi-label">Ticket prom.</div>
-            <div className="chart-kpi-value" style={{fontSize:11}}>{ticketPromedio>0?fmt$(ticketPromedio):'—'}</div>
-            <div className="chart-kpi-sub">Por venta</div>
-          </div>
-          <div className="chart-kpi">
-            <div className="chart-kpi-label">Margen</div>
-            <div className="chart-kpi-value" style={{fontSize:13,color:summary.margen>=30?'var(--gold-2)':summary.margen>=15?'var(--ink)':'var(--danger)'}}>{summary.margen}%</div>
-            <div className="chart-kpi-sub">Bruto neto</div>
-          </div>
         </div>
         );
       })()}
