@@ -2596,8 +2596,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
     const byDow=Array(7).fill(0).map((_,i)=>({label:DAYS[i],total:0,count:0}));
     const bySlot=Array(12).fill(0).map((_,i)=>({label:`${String(i*2).padStart(2,'0')}:00`,total:0,count:0}));
-    for(const q of history){
-      if(!q.concretada) continue;
+    for(const q of periodQuotes){
       const d=new Date(q.at);
       const dow=(d.getDay()+6)%7;
       byDow[dow].total+=Number(q.total)||0; byDow[dow].count++;
@@ -2607,7 +2606,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     const topDow=[...byDow].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
     const topSlot=[...bySlot].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
     return {topDow,topSlot,maxDow:topDow[0]?.total||1,maxSlot:topSlot[0]?.total||1,hasData:byDow.some(d=>d.count>0)};
-  },[history]);
+  },[periodQuotes]);
 
   // Ventas por persona — período activo
   const personRanking = useMemo(()=>{
@@ -2633,12 +2632,17 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       micro: {name:'Micro', emoji:'💎',count:0,grams:0,revenue:0},
       italiana:{name:'Italiana',emoji:'🇮🇹',count:0,grams:0,revenue:0},
       gf18k:{name:'GF 18K',emoji:'☀️',count:0,grams:0,revenue:0},
+      insumos:{name:'Insumos',emoji:'🔩',count:0,grams:0,revenue:0,isInsumo:true},
     };
     for(const q of periodQuotes){
       const seen=new Set();
       for(const l of(q.lines||[])){
-        if(l.category===INSUMO_KEY) continue;
-        if(l.category===LOTE_KEY){
+        if(l.isGift) continue;
+        if(l.category===INSUMO_KEY){
+          const val=(l.insumoValor!==undefined&&l.insumoValor!==null&&l.insumoValor!=='')?Number(l.insumoValor):(Number(l.insumoCost)||0);
+          const qty=Number(l.insumoQty)||1;
+          G.insumos.revenue+=val*qty; G.insumos.grams+=qty; seen.add('insumos');
+        } else if(l.category===LOTE_KEY){
           const gm=l.loteGramsMap||{};
           for(const k of['cadena','micro','italiana','gf18k']){const g=Number(gm[k])||0;if(g>0){G[k].grams+=g;seen.add(k);}}
         } else {
@@ -2650,10 +2654,38 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       }
       seen.forEach(k=>G[k].count++);
     }
-    const totG=Object.values(G).reduce((s,v)=>s+v.grams,0);
+    const totRev=Object.values(G).reduce((s,v)=>s+v.revenue,0);
+    const totG=Object.entries(G).filter(([k])=>k!=='insumos').reduce((s,[,v])=>s+v.grams,0);
     return Object.entries(G)
-      .map(([key,v])=>({key,name:v.name,emoji:v.emoji,count:v.count,grams:Math.round(v.grams*10)/10,avg:v.count?Math.round(v.grams/v.count*10)/10:0,revenue:Math.round(v.revenue),pct:totG?Math.round(v.grams/totG*100):0}))
-      .filter(x=>x.grams>0).sort((a,b)=>b.grams-a.grams);
+      .map(([key,v])=>({key,name:v.name,emoji:v.emoji,count:v.count,isInsumo:!!v.isInsumo,
+        grams:v.isInsumo?Math.round(v.grams):Math.round(v.grams*10)/10,
+        avg:v.count?Math.round(v.grams/v.count*10)/10:0,
+        revenue:Math.round(v.revenue),
+        pct:totRev?Math.round(v.revenue/totRev*100):0}))
+      .filter(x=>x.grams>0||x.revenue>0).sort((a,b)=>b.revenue-a.revenue);
+  },[periodQuotes,prices]);
+
+  const giftStats = useMemo(()=>{
+    let count=0,value=0,insumoVal=0,joyeriaVal=0;
+    const byQ=new Set();
+    for(const q of periodQuotes){
+      let hadGift=false;
+      for(const l of(q.lines||[])){
+        if(!l.isGift) continue;
+        count++; hadGift=true;
+        if(l.category===INSUMO_KEY){
+          const val=(l.insumoValor!==undefined&&l.insumoValor!==null&&l.insumoValor!=='')?Number(l.insumoValor):(Number(l.insumoCost)||0);
+          const qty=Number(l.insumoQty)||1;
+          insumoVal+=val*qty; value+=val*qty;
+        } else {
+          const price=prices[l.category]?.prices[q.tier]||0;
+          const v=price*(Number(l.grams)||0);
+          joyeriaVal+=v; value+=v;
+        }
+      }
+      if(hadGift) byQ.add(q.id||q.at);
+    }
+    return {count,value:Math.round(value),insumoVal:Math.round(insumoVal),joyeriaVal:Math.round(joyeriaVal),quotes:byQ.size};
   },[periodQuotes,prices]);
 
   // Conversión: cotizaciones totales del período (concretadas + no concretadas)
@@ -3002,19 +3034,54 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         </div>
       )}
 
+      {/* ── análisis de regalos ── */}
+      {giftStats.count>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Análisis <em>de regalos</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>🎁 Ítems regalados</div>
+              <div style={{fontSize:20,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',marginBottom:3}}>{giftStats.count}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{giftStats.quotes} {giftStats.quotes===1?'venta':'ventas'} con regalo</div>
+            </div>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>💸 Valor regalado</div>
+              <div style={{fontSize:16,fontWeight:800,color:'var(--danger,#f87171)',fontFamily:'var(--mono)',marginBottom:3}}>${fmtCLP(giftStats.value)}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>precio de venta</div>
+            </div>
+          </div>
+          {(giftStats.joyeriaVal>0||giftStats.insumoVal>0)&&(
+            <div style={{padding:'0 16px 14px',display:'flex',flexDirection:'column',gap:6}}>
+              {giftStats.joyeriaVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>💍 Joyería</span>
+                  <span style={{color:'var(--gold-2)',fontWeight:700}}>${fmtCLP(giftStats.joyeriaVal)}</span>
+                </div>
+              )}
+              {giftStats.insumoVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>🔩 Insumos</span>
+                  <span style={{color:'#f472b6',fontWeight:700}}>${fmtCLP(giftStats.insumoVal)}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── tabla comparativa por producto ── */}
       {productStats.length>0&&(()=>{
         const CAT_COLORS={cadena:'#c9a84c',micro:'#6ee7b7',italiana:'#f4a380',gf18k:'#fb923c'};
         const cols=[
           {key:'name',   label:'Producto'},
           {key:'count',  label:'Ventas'},
-          {key:'grams',  label:'Gramos'},
-          {key:'avg',    label:'Prom/v'},
+          {key:'grams',  label:'G / Uni'},
           {key:'revenue',label:'Ingresos'},
           {key:'pct',    label:'%'},
         ];
         const sorted=[...productStats].sort((a,b)=>sortCol==='name'?a.name.localeCompare(b.name):b[sortCol]-a[sortCol]);
         const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
+        const ICOLORS={...CAT_COLORS,insumos:'#f472b6'};
         const thStyle=(k)=>({fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:sortCol===k?'var(--gold-2)':'var(--ink-mute)',padding:'8px 10px',textAlign:k==='name'?'left':'right',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',borderBottom:'1px solid var(--line)',background:'var(--card)'});
         const tdStyle=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
         return(
@@ -3034,18 +3101,16 @@ function ReportsTab({ history, prices, onToggleConcretada }){
               <tbody>
                 {sorted.map(d=>(
                   <tr key={d.key}>
-                    <td style={tdStyle(false,true,CAT_COLORS[d.key])}>
+                    <td style={tdStyle(false,true,ICOLORS[d.key])}>
                       <span style={{marginRight:5}}>{d.emoji}</span>{d.name}
                     </td>
                     <td style={tdStyle(true,false)}>{d.count}</td>
-                    <td style={tdStyle(true,true,'var(--ink-dim)')}>{d.grams}g</td>
-                    <td style={tdStyle(true,false)}>{d.avg}g</td>
+                    <td style={tdStyle(true,true,'var(--ink-dim)')}>{d.isInsumo?`${d.grams} un.`:`${d.grams}g`}</td>
                     <td style={tdStyle(true,false,'var(--ink-mute)')}>{d.revenue>0?fmt$(d.revenue):'—'}</td>
-                    <td style={tdStyle(true,true,CAT_COLORS[d.key])}>{d.pct}%</td>
+                    <td style={tdStyle(true,true,ICOLORS[d.key])}>{d.pct}%</td>
                   </tr>
                 ))}
                 {(()=>{
-                  const totGr=productStats.reduce((s,d)=>s+d.grams,0);
                   const totRev=productStats.reduce((s,d)=>s+d.revenue,0);
                   const totCnt=productStats.reduce((s,d)=>s+d.count,0);
                   const totStyle=(right,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:700,color:color||'var(--ink)',borderTop:'2px solid var(--line)',whiteSpace:'nowrap',background:'var(--bg-2)'});
@@ -3053,7 +3118,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
                   <tr>
                     <td style={totStyle(false)}>Total</td>
                     <td style={totStyle(true)}>{totCnt}</td>
-                    <td style={totStyle(true,'var(--gold-2)')}>{Math.round(totGr*10)/10}g</td>
                     <td style={totStyle(true,'var(--ink-mute)')}>—</td>
                     <td style={totStyle(true)}>{totRev>0?fmt$(totRev):'—'}</td>
                     <td style={totStyle(true)}>100%</td>
@@ -3489,16 +3553,23 @@ function ChartsTab({ history, prices }) {
     const now=new Date();
     const months=Array(6).fill(0).map((_,i)=>{
       const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);
-      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),cadena:0,micro:0,italiana:0,gf18k:0,total:0};
+      return {key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.',''),cadena:0,micro:0,italiana:0,gf18k:0,insumos:0,total:0};
     });
     for(const q of history){
       if(!q.concretada) continue;
       const m=months.find(m=>m.key===monthKey(q.at)); if(!m) continue;
       for(const l of(q.lines||[])){
-        const grp=catToGroup[l.category]; if(!grp) continue;
-        const price=(prices[l.category]?.prices[q.tier])||0;
-        const rev=(Number(l.grams)||0)*price;
-        m[grp]+=rev; m.total+=rev;
+        if(l.isGift) continue;
+        if(l.category===INSUMO_KEY){
+          const val=(l.insumoValor!==undefined&&l.insumoValor!==null&&l.insumoValor!=='')?Number(l.insumoValor):(Number(l.insumoCost)||0);
+          const qty=Number(l.insumoQty)||1;
+          m.insumos+=val*qty; m.total+=val*qty;
+        } else {
+          const grp=catToGroup[l.category]; if(!grp) continue;
+          const price=(prices[l.category]?.prices[q.tier])||0;
+          const rev=(Number(l.grams)||0)*price;
+          m[grp]+=rev; m.total+=rev;
+        }
       }
     }
     return months;
@@ -3558,7 +3629,7 @@ function ChartsTab({ history, prices }) {
     ctx.clearRect(0,0,W,H);
     const pad={top:16,right:16,bottom:30,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
     const n=mixData.length; if(!n) return;
-    const SERIES=[{k:'cadena',color:'#c9a84c'},{k:'micro',color:'#38bdf8'},{k:'italiana',color:'#4ade80'},{k:'gf18k',color:'#a78bfa'}];
+    const SERIES=[{k:'cadena',color:'#c9a84c'},{k:'micro',color:'#38bdf8'},{k:'italiana',color:'#4ade80'},{k:'gf18k',color:'#a78bfa'},{k:'insumos',color:'#f472b6'}];
     const allVals=mixData.flatMap(m=>SERIES.map(s=>m[s.k]||0));
     const maxVal=Math.max(...allVals,1);
     ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
@@ -3720,7 +3791,7 @@ function ChartsTab({ history, prices }) {
           </div>
           {/* ── mix de ingresos por categoría (últimos 6 meses) ── */}
           {mixData.some(m=>m.total>0)&&(()=>{
-            const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa'};
+            const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa',insumos:'#f472b6'};
             return(
             <div className="chart-card">
               <div className="chart-head"><h3>Mix <em>de ingresos</em></h3><span className="eyebrow">últimos 6 meses</span></div>
@@ -3733,7 +3804,7 @@ function ChartsTab({ history, prices }) {
                 {Object.entries(MCOLORS).map(([k,c])=>(
                   <div key={k} style={{display:'flex',alignItems:'center',gap:5}}>
                     <div style={{width:8,height:8,borderRadius:2,background:c}}/>
-                    <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'capitalize'}}>{k==='gf18k'?'GF 18K':k.charAt(0).toUpperCase()+k.slice(1)}</span>
+                    <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'capitalize'}}>{k==='gf18k'?'GF 18K':k==='insumos'?'Insumos':k.charAt(0).toUpperCase()+k.slice(1)}</span>
                   </div>
                 ))}
               </div>
