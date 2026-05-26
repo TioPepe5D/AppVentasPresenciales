@@ -2592,6 +2592,23 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     return {rows,maxC:rows[0]?.count||1};
   },[history]);
 
+  const salesPattern = useMemo(()=>{
+    const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const byDow=Array(7).fill(0).map((_,i)=>({label:DAYS[i],total:0,count:0}));
+    const bySlot=Array(12).fill(0).map((_,i)=>({label:`${String(i*2).padStart(2,'0')}:00`,total:0,count:0}));
+    for(const q of history){
+      if(!q.concretada) continue;
+      const d=new Date(q.at);
+      const dow=(d.getDay()+6)%7;
+      byDow[dow].total+=Number(q.total)||0; byDow[dow].count++;
+      const slot=Math.min(11,Math.floor(d.getHours()/2));
+      bySlot[slot].total+=Number(q.total)||0; bySlot[slot].count++;
+    }
+    const topDow=[...byDow].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
+    const topSlot=[...bySlot].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
+    return {topDow,topSlot,maxDow:topDow[0]?.total||1,maxSlot:topSlot[0]?.total||1,hasData:byDow.some(d=>d.count>0)};
+  },[history]);
+
   // Ventas por persona — período activo
   const personRanking = useMemo(()=>{
     const byP={};
@@ -2928,33 +2945,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         );
       })()}
 
-      {/* ── ranking vendedores — todos los datos ── */}
-      {vendedoresRanking.rows.length>0&&(()=>{
-        const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
-        return(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Vendedores <em>ranking</em></h3><span className="eyebrow">todos los datos · por venta total</span></div>
-          <div style={{padding:'10px 16px 14px'}}>
-            {vendedoresRanking.rows.map((r,i)=>(
-              <div key={r.name} style={{marginBottom:11}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
-                  <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>
-                    <span style={{color:PAL[i%PAL.length],fontWeight:700}}>{r.count}</span>
-                    <span style={{color:'var(--ink-mute)'}}> ventas · </span>
-                    <span>${fmtCLP(r.total)}</span>
-                  </span>
-                </div>
-                <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(r.total/vendedoresRanking.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        );
-      })()}
-
       {/* ── ranking agendadores — todos los datos ── */}
       {agendadoresRanking.rows.length>0&&(()=>{
         const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
@@ -2977,6 +2967,37 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         </div>
         );
       })()}
+
+      {/* ── mejor día y hora de ventas ── */}
+      {salesPattern.hasData&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor día <em>y hora</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
+          <div style={{padding:'12px 16px 6px'}}>
+            <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>📅 Mejores días</div>
+            {salesPattern.topDow.map((d,i)=>(
+              <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(d.total/salesPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{padding:'4px 16px 14px'}}>
+            <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>⏰ Mejores horarios</div>
+            {salesPattern.topSlot.map((s,i)=>(
+              <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(s.total/salesPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── tabla comparativa por producto ── */}
       {productStats.length>0&&(()=>{
@@ -3362,25 +3383,6 @@ function ChartsTab({ history, prices }) {
   },[navRange,history]);
 
   // Patrón histórico sobre TODOS los datos
-  const historicalPattern = useMemo(()=>{
-    const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    const byDow=Array(7).fill(0).map((_,i)=>({label:DAYS[i],total:0,count:0}));
-    const bySlot=Array(12).fill(0).map((_,i)=>({label:`${String(i*2).padStart(2,'0')}:00`,total:0,count:0}));
-    for(const q of history){
-      if(!q.concretada) continue;
-      const d=new Date(q.at);
-      const dow=(d.getDay()+6)%7;
-      byDow[dow].total+=Number(q.total)||0; byDow[dow].count++;
-      const slot=Math.min(11,Math.floor(d.getHours()/2));
-      bySlot[slot].total+=Number(q.total)||0; bySlot[slot].count++;
-    }
-    const topDow=[...byDow].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
-    const topSlot=[...bySlot].sort((a,b)=>b.total-a.total).slice(0,3).filter(d=>d.count>0);
-    const maxDow=topDow[0]?.total||1;
-    const maxSlot=topSlot[0]?.total||1;
-    return {topDow,topSlot,maxDow,maxSlot,hasData:byDow.some(d=>d.count>0)};
-  },[history]);
-
   const personData = useMemo(()=>{
     const totals={};
     const inc=(name,field,val)=>{ if(!totals[name]) totals[name]={agendado:0,atendido:0,empresa:0}; totals[name][field]+=val; };
@@ -3713,36 +3715,6 @@ function ChartsTab({ history, prices }) {
               </div>
             </div>
           </div>
-          {historicalPattern.hasData&&(
-            <div className="chart-card">
-              <div className="chart-head"><h3>Mejor <em>agenda</em></h3><span className="eyebrow">patrón histórico</span></div>
-              <div style={{padding:'12px 16px 6px'}}>
-                <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>📅 Mejores días</div>
-                {historicalPattern.topDow.map((d,i)=>(
-                  <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                    <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
-                    <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${Math.round(d.total/historicalPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'var(--line-2, rgba(255,255,255,.15))',borderRadius:3,transition:'width .4s'}}/>
-                    </div>
-                    <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{padding:'4px 16px 14px'}}>
-                <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>⏰ Mejores horarios</div>
-                {historicalPattern.topSlot.map((s,i)=>(
-                  <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                    <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
-                    <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${Math.round(s.total/historicalPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'var(--line-2, rgba(255,255,255,.15))',borderRadius:3,transition:'width .4s'}}/>
-                    </div>
-                    <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* ── mix de ingresos por categoría (últimos 6 meses) ── */}
           {mixData.some(m=>m.total>0)&&(()=>{
             const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa'};
