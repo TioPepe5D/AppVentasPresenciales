@@ -2566,6 +2566,44 @@ function ReportsTab({ history, prices, onToggleConcretada }){
   const prevVentas = useMemo(()=>prevQuotes.reduce((s,q)=>s+(Number(q.total)||0),0),[prevQuotes]);
   const prevGanancia = useMemo(()=>prevQuotes.reduce((s,q)=>s+quoteCostAndProfit(q,prices).profit,0),[prevQuotes,prices]);
 
+  // Ranking vendedores (todos los datos históricos)
+  const vendedoresRanking = useMemo(()=>{
+    const byP={};
+    for(const q of history){
+      if(!q.concretada) continue;
+      const k=normName((q.attendant||'').trim()||EMPRESA);
+      if(!byP[k]) byP[k]={name:k,total:0,count:0};
+      byP[k].total+=Number(q.total)||0; byP[k].count++;
+    }
+    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.total-a.total);
+    return {rows,maxT:rows[0]?.total||1};
+  },[history]);
+
+  // Ranking agendadores (todos los datos históricos)
+  const agendadoresRanking = useMemo(()=>{
+    const byP={};
+    for(const q of history){
+      if(!q.concretada) continue;
+      const k=normName((q.scheduler||'').trim()||EMPRESA);
+      if(!byP[k]) byP[k]={name:k,count:0};
+      byP[k].count++;
+    }
+    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
+    return {rows,maxC:rows[0]?.count||1};
+  },[history]);
+
+  // Ventas por persona — período activo
+  const personRanking = useMemo(()=>{
+    const byP={};
+    for(const q of periodQuotes){
+      const k=normName((q.attendant||'').trim()||EMPRESA);
+      if(!byP[k]) byP[k]={name:k,total:0,count:0};
+      byP[k].total+=Number(q.total)||0; byP[k].count++;
+    }
+    const rows=Object.values(byP).sort((a,b)=>b.total-a.total);
+    return {rows,maxT:rows[0]?.total||1};
+  },[periodQuotes]);
+
   const [sortCol, setSortCol] = useState('grams');
   const productStats = useMemo(()=>{
     const CAT_TO_GROUP={
@@ -2811,7 +2849,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         if(insights.personStar) chips.push({icon:'⭐',label:'Mayor vendedor',value:insights.personStar[0],sub:`${insights.personStar[1].count} ventas · ${fmt$(insights.personStar[1].total)}`,color:'var(--ink)'});
         if(insights.agendaStar) chips.push({icon:'📋',label:'Más agenda',value:insights.agendaStar[0],sub:`${insights.agendaStar[1].count} cita${insights.agendaStar[1].count!==1?'s':''} agendada${insights.agendaStar[1].count!==1?'s':''}`,color:'var(--ink)'});
         if(insights.productStar) chips.push({icon:'💎',label:'Producto estrella',value:{cadena:'Cadena',micro:'Micro',italiana:'Italiana',gf18k:'GF 18K'}[insights.productStar[0]]||insights.productStar[0],sub:`${fmt$(Math.round(insights.productStar[1]))} en ingresos`,color:'var(--ink)'});
-        chips.push({icon:'📅',label:'Días activos',value:`${insights.activeDays}/${insights.totalDays}`,sub:`${Math.round(insights.activeDays/insights.totalDays*100)}% de eficiencia`,color:insights.activeDays/insights.totalDays>=0.5?'var(--gold-2)':insights.activeDays/insights.totalDays>=0.3?'var(--ink)':'var(--danger)'});
         return(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Inteligencia <em>de negocio</em></h3><span className="eyebrow">{activeLabel}</span></div>
@@ -2823,48 +2860,6 @@ function ReportsTab({ history, prices, onToggleConcretada }){
                 <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{c.sub}</div>
               </div>
             ))}
-          </div>
-          {insights.buySuggestion.length>0&&(
-            <div style={{padding:'0 16px 14px'}}>
-              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.14em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:8}}>🛒 Sugerencia de compra</div>
-              <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                {insights.buySuggestion.map(s=>(
-                  <div key={s.label} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
-                    <span style={{color:'var(--ink-dim)',fontWeight:600}}>{s.label}</span>
-                    <span style={{color:'var(--ink-mute)'}}>Vendido: <b style={{color:'var(--ink)'}}>{s.sold}g</b> → Reponer: <b style={{color:'var(--gold-2)'}}>{s.suggest}g</b></span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        );
-      })()}
-
-      {/* ── gramos por categoría ── */}
-      {(()=>{
-        const totG=Object.values(summary.gramsByGroup).reduce((s,v)=>s+v,0);
-        if(!totG) return null;
-        const cats=[['cadena','Cadena 🔗'],['micro','Micro 💎'],['italiana','Italiana 🇮🇹'],['gf18k','GF 18K ☀️']].filter(([k])=>summary.gramsByGroup[k]>0);
-        return(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Gramos <em>vendidos</em></h3><span className="eyebrow">{Math.round(totG*10)/10}g total</span></div>
-          <div style={{padding:'12px 14px 10px'}}>
-            <div style={{display:'flex',height:14,borderRadius:7,overflow:'hidden',marginBottom:12,gap:2}}>
-              {cats.map(([k])=><div key={k} style={{flex:summary.gramsByGroup[k],background:GCOLORS[k]||'#818cf8'}}/>)}
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 16px'}}>
-              {cats.map(([k,lbl])=>(
-                <div key={k} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',fontFamily:'var(--mono)',fontSize:12}}>
-                  <span style={{color:'var(--ink-mute)'}}>{lbl}</span>
-                  <span style={{color:GCOLORS[k],fontWeight:700}}>{Math.round(summary.gramsByGroup[k]*10)/10}g</span>
-                </div>
-              ))}
-            </div>
-            <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--line)',display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12}}>
-              <span style={{color:'var(--ink-mute)',letterSpacing:'.1em',textTransform:'uppercase'}}>Total</span>
-              <span style={{color:'var(--gold-2)',fontWeight:700}}>{Math.round(totG*10)/10}g</span>
-            </div>
           </div>
         </div>
         );
@@ -2909,6 +2904,79 @@ function ReportsTab({ history, prices, onToggleConcretada }){
           </div>
         </div>
       )}
+
+      {/* ── ventas por persona — período activo ── */}
+      {personRanking.rows.length>0&&(()=>{
+        const PAL=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8'];
+        return(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Ventas <em>por persona</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'10px 16px 14px'}}>
+            {personRanking.rows.map((r,i)=>(
+              <div key={r.name} style={{marginBottom:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>${fmtCLP(r.total)} · {r.count} {r.count===1?'venta':'ventas'}</span>
+                </div>
+                <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(r.total/personRanking.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── ranking vendedores — todos los datos ── */}
+      {vendedoresRanking.rows.length>0&&(()=>{
+        const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
+        return(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Vendedores <em>ranking</em></h3><span className="eyebrow">todos los datos · por venta total</span></div>
+          <div style={{padding:'10px 16px 14px'}}>
+            {vendedoresRanking.rows.map((r,i)=>(
+              <div key={r.name} style={{marginBottom:11}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>
+                    <span style={{color:PAL[i%PAL.length],fontWeight:700}}>{r.count}</span>
+                    <span style={{color:'var(--ink-mute)'}}> ventas · </span>
+                    <span>${fmtCLP(r.total)}</span>
+                  </span>
+                </div>
+                <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(r.total/vendedoresRanking.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* ── ranking agendadores — todos los datos ── */}
+      {agendadoresRanking.rows.length>0&&(()=>{
+        const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
+        return(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Agendadores <em>ranking</em></h3><span className="eyebrow">todos los datos · por agendas</span></div>
+          <div style={{padding:'10px 16px 14px'}}>
+            {agendadoresRanking.rows.map((r,i)=>(
+              <div key={r.name} style={{marginBottom:11}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,color:PAL[i%PAL.length],fontWeight:700}}>{r.count} <span style={{fontWeight:400,color:'var(--ink-mute)',fontSize:11}}>agendas</span></span>
+                </div>
+                <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(r.count/agendadoresRanking.maxC*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        );
+      })()}
 
       {/* ── tabla comparativa por producto ── */}
       {productStats.length>0&&(()=>{
@@ -3378,31 +3446,36 @@ function ChartsTab({ history, prices }) {
   },[history,prices]);
 
   // Vendedores — todos los datos históricos
-  const vendedoresData = useMemo(()=>{
+  const vendedoresMonthly = useMemo(()=>{
+    const now=new Date();
+    const months=Array(6).fill(0).map((_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);return{key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.','')}; });
     const byP={};
     for(const q of history){
       if(!q.concretada) continue;
+      const mIdx=months.findIndex(m=>m.key===monthKey(q.at)); if(mIdx<0) continue;
       const k=normName((q.attendant||'').trim()||EMPRESA);
-      if(!byP[k]) byP[k]={name:k,total:0,count:0};
-      byP[k].total+=Number(q.total)||0; byP[k].count++;
+      if(!byP[k]) byP[k]={name:k,vals:Array(6).fill(0)};
+      byP[k].vals[mIdx]+=Number(q.total)||0;
     }
-    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.total-a.total);
-    const maxT=rows[0]?.total||1, maxC=Math.max(...rows.map(r=>r.count),1);
-    return {rows,maxT,maxC};
+    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    return {labels:months.map(m=>m.label),series};
   },[history]);
 
-  // Agendadores — todos los datos históricos
-  const agendadoresData = useMemo(()=>{
+  const agendadoresMonthly = useMemo(()=>{
+    const now=new Date();
+    const months=Array(6).fill(0).map((_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);return{key:monthKey(d.getTime()),label:d.toLocaleDateString('es-CL',{month:'short'}).replace('.','')}; });
     const byP={};
     for(const q of history){
       if(!q.concretada) continue;
+      const mIdx=months.findIndex(m=>m.key===monthKey(q.at)); if(mIdx<0) continue;
       const k=normName((q.scheduler||'').trim()||EMPRESA);
-      if(!byP[k]) byP[k]={name:k,count:0};
-      byP[k].count++;
+      if(!byP[k]) byP[k]={name:k,vals:Array(6).fill(0)};
+      byP[k].vals[mIdx]++;
     }
-    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
-    const maxC=rows[0]?.count||1;
-    return {rows,maxC};
+    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).slice(0,6).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    return {labels:months.map(m=>m.label),series};
   },[history]);
 
   // Mix de ingresos por categoría — últimos 6 meses
@@ -3426,22 +3499,11 @@ function ChartsTab({ history, prices }) {
     return months;
   },[history,prices]);
 
-  // Comparativa por persona — período actual
-  const personComparison = useMemo(()=>{
-    const byPerson={};
-    for(const q of visibleSales){
-      const att=normName((q.attendant||'').trim()||EMPRESA);
-      if(!byPerson[att]) byPerson[att]={total:0,count:0};
-      byPerson[att].total+=Number(q.total)||0; byPerson[att].count++;
-    }
-    const rows=Object.entries(byPerson).map(([name,v])=>({name,...v})).sort((a,b)=>b.total-a.total);
-    const maxVal=rows[0]?.total||1;
-    return {rows,maxVal};
-  },[visibleSales]);
-
   const salesRef=useRef(null);
   const trendRef=useRef(null);
   const mixRef=useRef(null);
+  const vendRef=useRef(null);
+  const agendRef=useRef(null);
 
   useEffect(()=>{
     const canvas=salesRef.current; if(!canvas) return;
@@ -3517,6 +3579,55 @@ function ChartsTab({ history, prices }) {
       ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(m.label.toUpperCase(),x,H-4);
     });
   },[mixData]);
+
+  const drawMultiLine=(canvas,H,data,labelFn)=>{
+    if(!canvas||!data.series.length) return;
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    const lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
+    ctx.clearRect(0,0,W,H);
+    const legH=data.series.length>3?28:18;
+    const pad={top:14,right:16,bottom:20+legH,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+    const n=data.labels.length; if(!n) return;
+    const allVals=data.series.flatMap(s=>s.vals);
+    const maxVal=Math.max(...allVals,1);
+    ctx.strokeStyle=lineC;ctx.lineWidth=0.5;
+    [0,0.5,1].forEach(t=>{const y=pad.top+cH*(1-t);ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(W-pad.right,y);ctx.stroke();});
+    const pt=(i,v)=>({x:pad.left+(n<2?cW/2:i/(n-1)*cW),y:pad.top+cH*(1-Math.max(0,v)/maxVal)});
+    data.series.forEach(({vals,color})=>{
+      const pts=vals.map((v,i)=>pt(i,v));
+      const grad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+      grad.addColorStop(0,color+'1a');grad.addColorStop(1,color+'00');
+      ctx.beginPath();ctx.moveTo(pts[0].x,pad.top+cH);ctx.lineTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.lineTo(pts[pts.length-1].x,pad.top+cH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+      ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineCap='round';ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length;i++){const cpx=(pts[i-1].x+pts[i].x)/2;ctx.bezierCurveTo(cpx,pts[i-1].y,cpx,pts[i].y,pts[i].x,pts[i].y);}
+      ctx.stroke();
+      pts.forEach((p,i)=>{if(vals[i]>0){ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();}});
+    });
+    data.labels.forEach((lbl,i)=>{
+      const x=pad.left+(n<2?cW/2:i/(n-1)*cW);
+      ctx.fillStyle=inkMute;ctx.font=`500 7px 'Montserrat',sans-serif`;ctx.textAlign='center';ctx.fillText(lbl.toUpperCase(),x,pad.top+cH+14);
+    });
+    // legend
+    const cols=data.series.length>3?2:1;
+    const perCol=Math.ceil(data.series.length/cols);
+    const colW=cW/cols;
+    data.series.forEach(({name,color},i)=>{
+      const col=Math.floor(i/perCol),row=i%perCol;
+      const lx=pad.left+col*colW,ly=pad.top+cH+20+row*12;
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(lx+4,ly-4,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=inkMute;ctx.font=`500 8px 'Montserrat',sans-serif`;ctx.textAlign='left';
+      const label=labelFn?labelFn(name,i):name;
+      ctx.fillText(label,lx+10,ly);
+    });
+  };
+
+  useEffect(()=>{ drawMultiLine(vendRef.current,180,vendedoresMonthly,null); },[vendedoresMonthly]);
+  useEffect(()=>{ drawMultiLine(agendRef.current,160,agendadoresMonthly,null); },[agendadoresMonthly]);
 
   useEffect(()=>{
     const canvas=trendRef.current; if(!canvas) return;
@@ -3632,29 +3743,6 @@ function ChartsTab({ history, prices }) {
             </div>
           )}
 
-          {/* ── comparativa por persona ── */}
-          {personComparison.rows.length>1&&(()=>{
-            const PAL2=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8'];
-            return(
-            <div className="chart-card">
-              <div className="chart-head"><h3>Ventas <em>por persona</em></h3><span className="eyebrow">{navRange.label}</span></div>
-              <div style={{padding:'10px 16px 14px'}}>
-                {personComparison.rows.map((r,i)=>(
-                  <div key={r.name} style={{marginBottom:10}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:PAL2[i%PAL2.length]}}>{r.name}</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>${fmtCLP(r.total)} · {r.count} {r.count===1?'venta':'ventas'}</span>
-                    </div>
-                    <div style={{height:7,borderRadius:4,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${Math.round(r.total/personComparison.maxVal*100)}%`,background:PAL2[i%PAL2.length],borderRadius:4,transition:'width .4s'}}/>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            );
-          })()}
-
           {/* ── mix de ingresos por categoría (últimos 6 meses) ── */}
           {mixData.some(m=>m.total>0)&&(()=>{
             const MCOLORS={cadena:'#c9a84c',micro:'#38bdf8',italiana:'#4ade80',gf18k:'#a78bfa'};
@@ -3724,63 +3812,29 @@ function ChartsTab({ history, prices }) {
             );
           })()}
 
-          {/* ── vendedores — todos los datos ── */}
-          {vendedoresData.rows.length>0&&(()=>{
-            const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
-            return(
+          {/* ── rendimiento vendedores — líneas mensuales ── */}
+          {vendedoresMonthly.series.length>0&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Vendedores <em>comparativa</em></h3><span className="eyebrow">todos los datos</span></div>
-              <div style={{padding:'10px 16px 14px'}}>
-                <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:'2px 8px',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--line)'}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)'}}>Persona</span>
-                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',textAlign:'right'}}>Ventas · Total</span>
+              <div className="chart-head"><h3>Rendimiento <em>vendedores</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div className="chart-body" style={{padding:'4px 0 0'}}>
+                <div className="chart-canvas-wrap">
+                  <canvas ref={vendRef} style={{height:180}}/>
                 </div>
-                {vendedoresData.rows.map((r,i)=>(
-                  <div key={r.name} style={{marginBottom:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
-                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)',letterSpacing:'.02em'}}>
-                        <span style={{color:PAL[i%PAL.length],fontWeight:700}}>{r.count}</span>
-                        <span style={{color:'var(--ink-mute)'}}> ventas · </span>
-                        <span>${fmtCLP(r.total)}</span>
-                      </span>
-                    </div>
-                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${Math.round(r.total/vendedoresData.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
-            );
-          })()}
+          )}
 
-          {/* ── agendadores — todos los datos ── */}
-          {agendadoresData.rows.length>0&&(()=>{
-            const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
-            return(
+          {/* ── actividad agendadores — líneas mensuales ── */}
+          {agendadoresMonthly.series.length>0&&(
             <div className="chart-card">
-              <div className="chart-head"><h3>Agendadores <em>comparativa</em></h3><span className="eyebrow">todos los datos</span></div>
-              <div style={{padding:'10px 16px 14px'}}>
-                <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:'2px 8px',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--line)'}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)'}}>Persona</span>
-                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',textAlign:'right'}}>Agendas</span>
+              <div className="chart-head"><h3>Actividad <em>agendadores</em></h3><span className="eyebrow">últimos 6 meses</span></div>
+              <div className="chart-body" style={{padding:'4px 0 0'}}>
+                <div className="chart-canvas-wrap">
+                  <canvas ref={agendRef} style={{height:160}}/>
                 </div>
-                {agendadoresData.rows.map((r,i)=>(
-                  <div key={r.name} style={{marginBottom:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
-                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
-                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:PAL[i%PAL.length],fontWeight:700}}>{r.count} <span style={{fontWeight:400,color:'var(--ink-mute)',fontSize:11}}>agendas</span></span>
-                    </div>
-                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${Math.round(r.count/agendadoresData.maxC*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
-            );
-          })()}
+          )}
 
         </div>
       )}
