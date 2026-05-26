@@ -3312,20 +3312,32 @@ function ChartsTab({ history, prices }) {
     return months;
   },[history,prices]);
 
-  // Heatmap día × hora — todos los datos
-  const heatmapData = useMemo(()=>{
-    const DAYS=['L','M','X','J','V','S','D'];
-    const matrix=Array(7).fill(0).map((_,dow)=>Array(12).fill(0).map((_,slot)=>({dow,slot,total:0,count:0})));
+  // Vendedores — todos los datos históricos
+  const vendedoresData = useMemo(()=>{
+    const byP={};
     for(const q of history){
       if(!q.concretada) continue;
-      const d=new Date(q.at);
-      const dow=(d.getDay()+6)%7;
-      const slot=Math.min(11,Math.floor(d.getHours()/2));
-      matrix[dow][slot].total+=Number(q.total)||0;
-      matrix[dow][slot].count++;
+      const k=normName((q.attendant||'').trim()||EMPRESA);
+      if(!byP[k]) byP[k]={name:k,total:0,count:0};
+      byP[k].total+=Number(q.total)||0; byP[k].count++;
     }
-    const maxVal=Math.max(...matrix.flat().map(c=>c.total),1);
-    return {matrix,maxVal,DAYS};
+    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.total-a.total);
+    const maxT=rows[0]?.total||1, maxC=Math.max(...rows.map(r=>r.count),1);
+    return {rows,maxT,maxC};
+  },[history]);
+
+  // Agendadores — todos los datos históricos
+  const agendadoresData = useMemo(()=>{
+    const byP={};
+    for(const q of history){
+      if(!q.concretada) continue;
+      const k=normName((q.scheduler||'').trim()||EMPRESA);
+      if(!byP[k]) byP[k]={name:k,count:0};
+      byP[k].count++;
+    }
+    const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
+    const maxC=rows[0]?.count||1;
+    return {rows,maxC};
   },[history]);
 
   // Mix de ingresos por categoría — últimos 6 meses
@@ -3648,32 +3660,93 @@ function ChartsTab({ history, prices }) {
             </div>
           )}
 
-          {/* ── heatmap día × hora ── */}
-          {heatmapData.matrix.flat().some(c=>c.count>0)&&(()=>{
-            const SLOTS=Array(12).fill(0).map((_,i)=>`${String(i*2).padStart(2,'0')}h`);
+          {/* ── cantidad de ventas por período ── */}
+          {timeData.some(d=>d.count>0)&&(()=>{
+            const maxC=Math.max(...timeData.map(d=>d.count),1);
+            const PAL=['#38bdf8'];
             return(
-            <div className="chart-card" style={{overflow:'hidden'}}>
-              <div className="chart-head"><h3>Heatmap <em>día × hora</em></h3><span className="eyebrow">todos los datos</span></div>
-              <div style={{padding:'10px 12px 14px',overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
-                <div style={{display:'grid',gridTemplateColumns:`28px repeat(7,1fr)`,gap:3,minWidth:280}}>
-                  <div/>
-                  {heatmapData.DAYS.map(d=>(
-                    <div key={d} style={{fontFamily:'var(--mono)',fontSize:9,textAlign:'center',color:'var(--ink-mute)',fontWeight:700,paddingBottom:4}}>{d}</div>
-                  ))}
-                  {SLOTS.map((slotLabel,slot)=>[
-                    <div key={`l${slot}`} style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--ink-mute)',display:'flex',alignItems:'center',paddingRight:4}}>{slotLabel}</div>,
-                    ...heatmapData.DAYS.map((_,dow)=>{
-                      const cell=heatmapData.matrix[dow][slot];
-                      const intensity=cell.total/heatmapData.maxVal;
-                      const bg=intensity>0?`rgba(201,168,76,${Math.max(0.08,intensity*0.9)})`:'var(--bg-2)';
-                      return(
-                        <div key={`${dow}-${slot}`} style={{aspectRatio:'1',borderRadius:4,background:bg,border:'1px solid var(--line)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                          {cell.count>0&&<span style={{fontFamily:'var(--mono)',fontSize:7,color:'var(--ink-dim)',fontWeight:700}}>{cell.count}</span>}
-                        </div>
-                      );
-                    })
-                  ])}
+            <div className="chart-card">
+              <div className="chart-head"><h3>Cantidad <em>de ventas</em></h3><span className="eyebrow">{navRange.label}</span></div>
+              <div style={{padding:'12px 16px 10px'}}>
+                <div style={{display:'flex',gap:3,alignItems:'flex-end',height:90,marginBottom:8}}>
+                  {timeData.map((d,i)=>{
+                    const h=d.count>0?Math.max(8,Math.round(d.count/maxC*80)):0;
+                    return(
+                    <div key={d.key} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',gap:2}}>
+                      {d.count>0&&<span style={{fontFamily:'var(--mono)',fontSize:7,color:'var(--ink-mute)',fontWeight:700}}>{d.count}</span>}
+                      <div style={{width:'100%',height:`${h}px`,background:'#38bdf8',borderRadius:'3px 3px 0 0',minHeight:d.count>0?4:0,transition:'height .3s'}}/>
+                    </div>
+                    );
+                  })}
                 </div>
+                <div style={{display:'flex',gap:3}}>
+                  {timeData.map((d,i)=>{
+                    const n=timeData.length,show=n<=14||i%Math.ceil(n/14)===0||i===n-1;
+                    return(
+                    <div key={d.key} style={{flex:1,fontFamily:'var(--mono)',fontSize:7,textAlign:'center',color:'var(--ink-mute)',textTransform:'uppercase',overflow:'hidden',opacity:show?1:0}}>
+                      {show?d.label:''}
+                    </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            );
+          })()}
+
+          {/* ── vendedores — todos los datos ── */}
+          {vendedoresData.rows.length>0&&(()=>{
+            const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c'];
+            return(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Vendedores <em>comparativa</em></h3><span className="eyebrow">todos los datos</span></div>
+              <div style={{padding:'10px 16px 14px'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:'2px 8px',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--line)'}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)'}}>Persona</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',textAlign:'right'}}>Ventas · Total</span>
+                </div>
+                {vendedoresData.rows.map((r,i)=>(
+                  <div key={r.name} style={{marginBottom:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                      <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)',letterSpacing:'.02em'}}>
+                        <span style={{color:PAL[i%PAL.length],fontWeight:700}}>{r.count}</span>
+                        <span style={{color:'var(--ink-mute)'}}> ventas · </span>
+                        <span>${fmtCLP(r.total)}</span>
+                      </span>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(r.total/vendedoresData.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            );
+          })()}
+
+          {/* ── agendadores — todos los datos ── */}
+          {agendadoresData.rows.length>0&&(()=>{
+            const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
+            return(
+            <div className="chart-card">
+              <div className="chart-head"><h3>Agendadores <em>comparativa</em></h3><span className="eyebrow">todos los datos</span></div>
+              <div style={{padding:'10px 16px 14px'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr auto',gap:'2px 8px',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--line)'}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)'}}>Persona</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',textAlign:'right'}}>Agendas</span>
+                </div>
+                {agendadoresData.rows.map((r,i)=>(
+                  <div key={r.name} style={{marginBottom:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:5}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                      <span style={{fontFamily:'var(--mono)',fontSize:12,color:PAL[i%PAL.length],fontWeight:700}}>{r.count} <span style={{fontWeight:400,color:'var(--ink-mute)',fontSize:11}}>agendas</span></span>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                      <div style={{height:'100%',width:`${Math.round(r.count/agendadoresData.maxC*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             );
