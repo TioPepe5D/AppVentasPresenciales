@@ -1199,11 +1199,11 @@ const buildMessagePiezas = (validLines, prices) => {
       const name = g.insumoName || 'Insumo';
       lines.push(`🎁 Regalo · ${name}: $${fmtCLP(cost)}`);
     } else {
-      const cat   = prices[g.category];
-      const grams = Number(g.grams) || 0;
-      const price = Number(g.customPrice) || 0;
-      const catName = cat?.name || g.category;
-      lines.push(`🎁 Regalo · ${catName} ${grams}g × $${fmtCLP(price)}/g → Costo: $${fmtCLP(price * grams)}`);
+      const cat       = prices[g.category];
+      const grams     = Number(g.grams) || 0;
+      const costPerG  = Number(cat?.cost) || 0;
+      const catName   = cat?.name || g.category;
+      lines.push(`🎁 Regalo · ${catName} ${grams}g × $${fmtCLP(costPerG)}/g → Costo: $${fmtCLP(costPerG * grams)}`);
     }
   }
   return lines.join('\n');
@@ -2026,7 +2026,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     </button>
                   </>
                 )}
-                {!isInsumo && !isLote && (
+                {!isInsumo && !isLote && !isGift && (
                   <div className="field custom-price-field" style={{gridColumn:'1 / -1',marginTop:2}}>
                     <label>Precio a cobrar</label>
                     <div className="control">
@@ -2043,7 +2043,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     </div>
                   </div>
                 )}
-                {!isInsumo && !isLote && (
+                {!isInsumo && !isLote && !isGift && (
                   <div className="legacy-price-table" style={{gridColumn:'1 / -1',marginTop:2}}>
                     <button
                       onClick={() => setOpenPickerId(openPickerId === line.id ? null : line.id)}
@@ -2104,7 +2104,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                       <span className="price-tag" style={{color:'var(--gold-2)'}}>
                         {isInsumo
                           ? `🎁 Regalo · costo $${fmtCLP(insumoCostVal)}`
-                          : `🎁 Regalo · ${g}g × $${fmtCLP(price)}/g`}
+                          : `🎁 Regalo · ${g}g`}
                       </span>
                       <span className="subtotal" style={{color:'var(--ink-mute)'}}>$0</span>
                     </>
