@@ -3510,7 +3510,7 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(groupedTimeData.length).fill(0)};
       byP[k].vals[bIdx]+=Number(q.total)||0;
     }
-    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c','#f87171'];
+    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c','#f87171','#34d399','#60a5fa','#fbbf24','#e879f9','#94a3b8'];
     const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
     return {labels,series};
   },[groupedTimeData,visibleSales]);
@@ -3524,7 +3524,7 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(groupedTimeData.length).fill(0)};
       byP[k].vals[bIdx]++;
     }
-    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c','#f87171'];
+    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c','#f87171','#34d399','#60a5fa','#fbbf24','#e879f9','#94a3b8'];
     const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
     return {labels,series};
   },[groupedTimeData,visibleSales]);
@@ -3634,16 +3634,18 @@ function ChartsTab({ history, prices }) {
 
   const drawMultiLine=(canvas,H,data,labelFn)=>{
     if(!canvas||!data.series.length) return;
-    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth;
-    canvas.width=W*dpr;canvas.height=H*dpr;
-    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
-    const lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
-    ctx.clearRect(0,0,W,H);
     const series=data.series;
     const cols=series.length>3?2:1;
     const perCol=Math.ceil(series.length/cols);
     const legH=perCol*12+8;
-    const pad={top:14,right:16,bottom:20+legH,left:16},cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+    const effectiveH=Math.max(H,14+60+20+legH);
+    canvas.style.height=effectiveH+'px';
+    const dpr=window.devicePixelRatio||1,W=canvas.offsetWidth;
+    canvas.width=W*dpr;canvas.height=effectiveH*dpr;
+    const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+    const lineC=getCssVar('--line'),inkMute=getCssVar('--ink-mute');
+    ctx.clearRect(0,0,W,effectiveH);
+    const pad={top:14,right:16,bottom:20+legH,left:16},cW=W-pad.left-pad.right,cH=effectiveH-pad.top-pad.bottom;
     const n=data.labels.length; if(!n) return;
     const allVals=series.flatMap(s=>s.vals);
     const maxVal=Math.max(...allVals,1);
