@@ -2579,18 +2579,17 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     return {rows,maxT:rows[0]?.total||1};
   },[history]);
 
-  // Ranking agendadores (todos los datos históricos)
+  // Ranking agendadores (periodo activo)
   const agendadoresRanking = useMemo(()=>{
     const byP={};
-    for(const q of history){
-      if(!q.concretada) continue;
+    for(const q of periodQuotes){
       const k=normName((q.scheduler||'').trim()||EMPRESA);
       if(!byP[k]) byP[k]={name:k,count:0};
       byP[k].count++;
     }
     const rows=Object.values(byP).filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
     return {rows,maxC:rows[0]?.count||1};
-  },[history]);
+  },[periodQuotes]);
 
   const salesPattern = useMemo(()=>{
     const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -2967,12 +2966,12 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         );
       })()}
 
-      {/* ── ranking agendadores — todos los datos ── */}
+      {/* ── ranking agendadores — periodo activo ── */}
       {agendadoresRanking.rows.length>0&&(()=>{
         const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
         return(
         <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Agendadores <em>ranking</em></h3><span className="eyebrow">todos los datos · por agendas</span></div>
+          <div className="chart-head"><h3>Agendadores <em>ranking</em></h3><span className="eyebrow">{activeLabel} · por agendas</span></div>
           <div style={{padding:'10px 16px 14px'}}>
             {agendadoresRanking.rows.map((r,i)=>(
               <div key={r.name} style={{marginBottom:11}}>
