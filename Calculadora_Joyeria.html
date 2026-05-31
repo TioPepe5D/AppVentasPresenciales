@@ -2275,6 +2275,17 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
   const [filterAttendant, setFilterAttendant] = useState("");
   const [filterScheduler, setFilterScheduler] = useState("");
   const [filterPago, setFilterPago] = useState("");
+  const [filterPeriod, setFilterPeriod] = useState("");
+  const [filterKilo, setFilterKilo] = useState("");
+
+  const periodBounds = useMemo(()=>{
+    const now = new Date();
+    const sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sow = new Date(sod); sow.setDate(sod.getDate()-((sod.getDay()+6)%7));
+    const som = new Date(now.getFullYear(), now.getMonth(), 1);
+    const soy = new Date(now.getFullYear(), 0, 1);
+    return {daily:sod.getTime(), weekly:sow.getTime(), monthly:som.getTime(), yearly:soy.getTime()};
+  },[]);
 
   const uniqueNames = useMemo(() => {
     const att=new Set(), sched=new Set(), pago=new Set();
@@ -2288,6 +2299,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const bound = filterPeriod ? periodBounds[filterPeriod] : null;
     return history.filter(h => {
       if (needle && !(
         (h.client || '').toLowerCase().includes(needle) ||
@@ -2302,11 +2314,15 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
       if (filterAttendant && normName(h.attendant||'') !== filterAttendant) return false;
       if (filterScheduler && normName(h.scheduler||'') !== filterScheduler) return false;
       if (filterPago && normName(h.pago||'') !== filterPago) return false;
+      if (bound !== null && new Date(h.at).getTime() < bound) return false;
+      if (filterKilo === 'kilo' && !(h.lines||[]).some(l=>l.category===LOTE_KEY)) return false;
+      if (filterKilo === 'individual' && (h.lines||[]).some(l=>l.category===LOTE_KEY)) return false;
       return true;
     });
-  }, [q, filterAttendant, filterScheduler, filterPago, history, prices]);
+  }, [q, filterAttendant, filterScheduler, filterPago, filterPeriod, filterKilo, periodBounds, history, prices]);
 
-  const hasFilters = filterAttendant || filterScheduler || filterPago;
+  const hasFilters = filterAttendant || filterScheduler || filterPago || filterKilo;
+  const clearAll = ()=>{setFilterAttendant('');setFilterScheduler('');setFilterPago('');setFilterKilo('');setFilterPeriod('');};
 
   const dayGroups = useMemo(() => {
     const groups = [], seen = new Map();
@@ -2322,6 +2338,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
   }, [filtered]);
 
   const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',flex:1,minWidth:0,cursor:'pointer'};
+  const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'5px 12px',borderRadius:20,border:'1px solid var(--line)',background:active?'var(--accent)':'var(--panel)',color:active?'#fff':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s'});
 
   return (
     <div className="fade-in">
@@ -2333,7 +2350,16 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         />
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
-      {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0) && (
+
+      {/* ── chips de período ── */}
+      <div style={{padding:'4px 14px 2px',display:'flex',gap:6,flexWrap:'wrap'}}>
+        {[['','Todos'],['daily','Hoy'],['weekly','Semana'],['monthly','Mes'],['yearly','Año']].map(([k,lbl])=>(
+          <button key={k} style={chipStyle(filterPeriod===k)} onClick={()=>setFilterPeriod(k)}>{lbl}</button>
+        ))}
+      </div>
+
+      {/* ── selects ── */}
+      {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0||true) && (
         <div style={{padding:'6px 14px 8px',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
           {uniqueNames.att.length>0 && (
             <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
@@ -2353,10 +2379,15 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
               {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
             </select>
           )}
-          {hasFilters && (
-            <button onClick={()=>{setFilterAttendant('');setFilterScheduler('');setFilterPago('');}}
+          <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
+            <option value="">Tipo: Todos</option>
+            <option value="kilo">📦 Por kilo</option>
+            <option value="individual">💍 Individual</option>
+          </select>
+          {(hasFilters||filterPeriod) && (
+            <button onClick={clearAll}
               style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
-            >✕</button>
+            >✕ Limpiar</button>
           )}
         </div>
       )}
