@@ -2720,7 +2720,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
 
   const exportCSV = () => {
     const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
-    const header=["Fecha","Pago A","Atendió","Agendó","G. Cadena","G. Micro","G. Italiana","G. GF 18K","Venta","Costo","Ganancia","Com. Agendó (35%)","Com. Atendió (35%)","Com. Empresa (30%)"];
+    const header=["Fecha","Pago A","Atendió","Agendó","G. Cadena","G. Micro","G. Italiana","G. GF 18K","Insumos","Venta","Costo","Ganancia","Com. Agendó (35%)","Com. Atendió (35%)","Com. Empresa (30%)"];
     const r1=x=>{const n=Math.round((x||0)*10)/10; return n===0?'':n.toLocaleString('es-CL',{maximumFractionDigits:1});};
     const b0=n=>n===0?'':n;
     const rows=periodQuotes.map(q=>{
@@ -2729,8 +2729,13 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       const d=new Date(q.at);
       const fecha=d.toLocaleDateString('es-CL')+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
       const g={cadena:0,micro:0,italiana:0,gf18k:0};
-      for(const l of(q.lines||[])){ if(l.category===LOTE_KEY){const gm=l.loteGramsMap||{};for(const k of['cadena','micro','italiana','gf18k'])g[k]+=Number(gm[k])||0;}else if(catToGroup[l.category])g[catToGroup[l.category]]+=Number(l.grams)||0; }
-      return [fecha,normName(q.pago||''),normName(q.attendant||EMPRESA),normName(q.scheduler||EMPRESA),r1(g.cadena),r1(g.micro),r1(g.italiana),r1(g.gf18k),b0(Number(q.total)||0),b0(Math.round(totalCost)),b0(Math.round(profit)),b0(Math.round(base*PCT_SCHEDULER)),b0(Math.round(base*PCT_ATTENDANT)),b0(Math.round(base*PCT_EMPRESA))];
+      let insumos=0;
+      for(const l of(q.lines||[])){
+        if(l.category===INSUMO_KEY){ insumos+=(l.insumoValor!==''&&l.insumoValor!=null?Number(l.insumoValor):Number(l.insumoCost)||0); }
+        else if(l.category===LOTE_KEY){const gm=l.loteGramsMap||{};for(const k of['cadena','micro','italiana','gf18k'])g[k]+=Number(gm[k])||0;}
+        else if(catToGroup[l.category])g[catToGroup[l.category]]+=Number(l.grams)||0;
+      }
+      return [fecha,normName(q.pago||''),normName(q.attendant||EMPRESA),normName(q.scheduler||EMPRESA),r1(g.cadena),r1(g.micro),r1(g.italiana),r1(g.gf18k),b0(Math.round(insumos)),b0(Number(q.total)||0),b0(Math.round(totalCost)),b0(Math.round(profit)),b0(Math.round(base*PCT_SCHEDULER)),b0(Math.round(base*PCT_ATTENDANT)),b0(Math.round(base*PCT_EMPRESA))];
     });
     const esc=v=>{const s=String(v??'');return /[",;\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
     const csv=[header,...rows.reverse()].map(r=>r.map(esc).join(';')).join('\r\n');
