@@ -2718,9 +2718,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         }
       }
     }
-    const baseCost=periodQuotes.length*1000;
     const rows=Object.values(cats).filter(v=>v.cost>0).sort((a,b)=>b.cost-a.cost);
-    if(baseCost>0) rows.push({name:'Base / Bolsas',emoji:'🛍️',cost:baseCost});
     const total=rows.reduce((s,v)=>s+v.cost,0);
     return {rows,total};
   },[periodQuotes,prices]);
@@ -2769,7 +2767,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       const g={cadena:0,micro:0,italiana:0,gf18k:0};
       let insumos=0;
       for(const l of(q.lines||[])){
-        if(l.category===INSUMO_KEY){ insumos+=Number(l.insumoCost)||0; }
+        if(l.category===INSUMO_KEY){ insumos+=(Number(l.insumoCost)||0)*(Number(l.insumoQty)||1); }
         else if(l.category===LOTE_KEY){const gm=l.loteGramsMap||{};for(const k of['cadena','micro','italiana','gf18k'])g[k]+=Number(gm[k])||0;}
         else if(catToGroup[l.category])g[catToGroup[l.category]]+=Number(l.grams)||0;
       }
