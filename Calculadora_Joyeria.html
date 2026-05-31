@@ -1260,6 +1260,13 @@ const effectiveCost = (cat, tier) => {
   const n = isKileroTier(tier) ? Number(cat.costKilero) : Number(cat.cost);
   return isFinite(n) ? n : (Number(cat.cost) || 0);
 };
+const meetsKileroConditions = (total, totalWeight) => total > 250000 || totalWeight > 500;
+const costFor = (cat, kilero) => {
+  if (!cat) return 0;
+  const n = kilero ? Number(cat.costKilero) : Number(cat.cost);
+  return isFinite(n) ? n : (Number(cat.cost) || 0);
+};
+const KILERO_CODE = "10";
 
 const quoteCostAndProfit = (quote, prices) => {
   const BASE_COST = 1000; // Costo base fijo por bolsas/insumos
@@ -1704,7 +1711,7 @@ function SalesList({ quotes, prices }){
 ═══════════════════════════════════════ */
 
 // ---------- Calculator Tab ----------
-function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy, customTotal, setCustomTotal }){
+function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy, customTotal, setCustomTotal, kileroActive, kileroAuto, kileroSpecial, onKileroToggle }){
   const [openPickerId, setOpenPickerId] = useState(null);
   const [editingTotal, setEditingTotal] = useState(false);
   const displayTotal = customTotal !== "" ? (Number(customTotal.toString().replace(/\D/g,"")) || 0) : totals.total;
@@ -1742,7 +1749,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
           const g = Number((line.loteGramsMap || {})[typeKey]) || 0;
           grams[groupKey] += g;
           const cat = prices[LOTE_CAT_MAP[typeKey]];
-          totalCost += effectiveCost(cat, totals.tier) * g;
+          totalCost += costFor(cat, kileroActive) * g;
         }
         continue;
       }
@@ -1750,11 +1757,11 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
       const g = Number(line.grams) || 0;
       const groupKey = regularGroupMap[line.category];
       if (groupKey) grams[groupKey] += g;
-      totalCost += effectiveCost(prices[line.category], totals.tier) * g;
+      totalCost += costFor(prices[line.category], kileroActive) * g;
     }
 
     return { grams, insumos, totalCost, profit: (Number(totals.total) || 0) - totalCost };
-  }, [lines, prices, totals.tier, totals.total]);
+  }, [lines, prices, totals.tier, totals.total, kileroActive]);
   return (
     <div className="fade-in">
       <div className="card">
@@ -2148,11 +2155,24 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             <div className="tier-body">
               <div className="eyebrow">Tramo aplicado</div>
               <div className="why"><strong>{TIER_RULES[totals.tier].desc}.</strong> {totals.reason}.</div>
-              {isKileroTier(totals.tier) && (
-                <div style={{display:'inline-flex',alignItems:'center',gap:4,marginTop:6,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.4)',borderRadius:6,padding:'3px 8px',fontSize:11,fontFamily:'var(--mono)',color:'var(--gold-2)',letterSpacing:'.1em'}}>
-                  ◆ KILERO ACTIVO
-                </div>
-              )}
+              <div style={{marginTop:10,display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',userSelect:'none'}}>
+                  <div onClick={()=>onKileroToggle(!kileroActive)} style={{width:38,height:22,borderRadius:11,background:kileroActive?'var(--gold-2)':'var(--line)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0}}>
+                    <div style={{position:'absolute',top:3,left:kileroActive?18:3,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+                  </div>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:kileroActive?'var(--gold-2)':'var(--ink-dim)'}}>
+                    {kileroActive ? (kileroSpecial ? '⭐ VENTA ESPECIAL KILERO' : '⚖️ PRECIO KILERO') : 'Precio kilero'}
+                  </span>
+                </label>
+                {kileroActive && (
+                  <div style={{display:'inline-flex',alignItems:'center',gap:4,background:kileroSpecial?'rgba(201,168,76,.08)':'rgba(var(--accent-rgb),.12)',border:`1px solid ${kileroSpecial?'rgba(201,168,76,.4)':'rgba(var(--accent-rgb),.35)'}`,borderRadius:6,padding:'3px 8px',fontSize:10,fontFamily:'var(--mono)',color:'var(--gold-2)',letterSpacing:'.08em'}}>
+                    {kileroSpecial ? '⭐ Venta especial autorizada · costKilero activo' : '◆ KILERO ACTIVO · costKilero activo'}
+                  </div>
+                )}
+                {kileroAuto && !kileroActive && (
+                  <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>Desactivado manualmente</div>
+                )}
+              </div>
             </div>
           </div>
           <div className="totals">
@@ -2315,8 +2335,9 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
       if (filterScheduler && normName(h.scheduler||'') !== filterScheduler) return false;
       if (filterPago && normName(h.pago||'') !== filterPago) return false;
       if (bound !== null && new Date(h.at).getTime() < bound) return false;
-      if (filterKilo === 'kilo' && !h.kilero) return false;
-      if (filterKilo === 'individual' && h.kilero) return false;
+      const hKilero = h.kilero || meetsKileroConditions(h.total||0, h.totalWeight||0);
+      if (filterKilo === 'kilo' && !hKilero) return false;
+      if (filterKilo === 'individual' && hKilero) return false;
       return true;
     });
   }, [q, filterAttendant, filterScheduler, filterPago, filterPeriod, filterKilo, periodBounds, history, prices]);
@@ -2412,13 +2433,17 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                 {items.map(h => {
                   const totalG = Math.round(h.lines.reduce((s,l)=>l.category===INSUMO_KEY?s:s+(Number(l.grams)||0),0)*10)/10;
                   return (
-                    <div className={`quote${h.concretada ? ' q-ok' : ''}${h.kilero ? ' q-kilero' : ''}`} key={h.id}
-                      style={h.kilero ? {borderColor:'rgba(201,168,76,.55)',boxShadow:'0 0 0 1px rgba(201,168,76,.18)'} : {}}>
+                    {(()=>{
+                      const isKilero = h.kilero || meetsKileroConditions(h.total||0, h.totalWeight||0);
+                      const isSpecial = h.kileroSpecial;
+                      return (
+                    <div className={`quote${h.concretada ? ' q-ok' : ''}`} key={h.id}
+                      style={isKilero ? {borderColor:'rgba(201,168,76,.55)',boxShadow:'0 0 0 1px rgba(201,168,76,.18)'} : {}}>
 
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,marginBottom:10}}>
-                        <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0,flexWrap:'wrap'}}>
                           <div className="quote-name" style={{margin:0}}>{h.client || <em>Sin nombre</em>}</div>
-                          {h.kilero && <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:800,letterSpacing:'.1em',color:'var(--gold-2)',background:'rgba(201,168,76,.12)',border:'1px solid rgba(201,168,76,.4)',borderRadius:4,padding:'1px 6px',flexShrink:0}}>⚖️ KILO</span>}
+                          {isKilero && <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:800,letterSpacing:'.1em',color:'var(--gold-2)',background:'rgba(201,168,76,.12)',border:'1px solid rgba(201,168,76,.4)',borderRadius:4,padding:'1px 6px',flexShrink:0}}>{isSpecial ? '⭐ ESPECIAL' : '⚖️ KILO'}</span>}
                         </div>
                         <div className="quote-date" style={{flexShrink:0}}>{fmtRelDate(h.at)}</div>
                       </div>
@@ -2507,8 +2532,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                       </div>
 
                     </div>
-                  );
-                })}
+                      );
+                    })()}
               </div>
             </React.Fragment>
           ))}
@@ -4046,11 +4071,39 @@ function App(){
   const removeLine = (id) => setLines(ls => ls.length > 1 ? ls.filter(l => l.id !== id) : ls);
   const updateLine = (id, patch) => setLines(ls => ls.map(l => l.id === id ? { ...l, ...patch } : l));
 
+  // Kilero manual override
+  const [kileroManual, setKileroManual]       = useState(null); // null=auto, true=forced, false=off
+  const [showKileroModal, setShowKileroModal] = useState(false);
+  const [kileroCodeInput, setKileroCodeInput] = useState('');
+  const [kileroCodeError, setKileroCodeError] = useState('');
+  const kileroAuto    = useMemo(() => meetsKileroConditions(totals.total, totals.totalWeight), [totals.total, totals.totalWeight]);
+  const kileroActive  = kileroManual !== null ? kileroManual : kileroAuto;
+  const kileroSpecial = kileroManual === true && !kileroAuto;
+
+  const handleKileroToggle = useCallback((checked) => {
+    if (checked && !kileroAuto) {
+      setKileroCodeInput(''); setKileroCodeError('');
+      setShowKileroModal(true);
+    } else {
+      setKileroManual(checked ? true : false);
+    }
+  }, [kileroAuto]);
+
+  const submitKileroCode = useCallback(() => {
+    if (kileroCodeInput.trim() === KILERO_CODE) {
+      setKileroManual(true);
+      setShowKileroModal(false); setKileroCodeInput(''); setKileroCodeError('');
+    } else {
+      setKileroCodeError('Código incorrecto. Solicita autorización a Diego Aravena.');
+    }
+  }, [kileroCodeInput]);
+
 
   const resetCalc = () => {
     setLines([{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]);
     setClientName(""); setScheduler(""); setAttendant(""); setPago(""); setConcretada(false);
     setCustomTotal("");
+    setKileroManual(null); setShowKileroModal(false); setKileroCodeInput(''); setKileroCodeError('');
     localStorage.removeItem(LS_DRAFT);
   };
 
@@ -4096,7 +4149,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     if (validLines.length === 0) { showToast("Agrega al menos una línea"); return; }
     const costsSnap = {};
     let totalCost = 0;
-    const kilero = isKileroTier(totals.tier);
+    const kilero = kileroActive;
     for (const l of validLines) {
       if (l.category === INSUMO_KEY) {
         const cost = Number(l.insumoCost) || 0;
@@ -4110,7 +4163,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         for (const [typeKey, catKey] of Object.entries(LOTE_CAT_MAP)) {
           const g = Number(gramsMap[typeKey]) || 0;
           if (g > 0) {
-            const c = effectiveCost(prices[catKey], totals.tier);
+            const c = costFor(prices[catKey], kileroActive);
             loteCost += c * g;
           }
         }
@@ -4118,7 +4171,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         continue;
       }
       const g = Number(l.grams) || 0;
-      const c = effectiveCost(prices[l.category], totals.tier);
+      const c = costFor(prices[l.category], kileroActive);
       costsSnap[l.category] = c;
       totalCost += c * g;
     }
@@ -4148,7 +4201,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0, isGift: !!l.isGift };
       }),
       tier: totals.tier, total: savedTotal, totalWeight: totals.totalWeight,
-      pago, kilero, costsSnap, totalCost, profit,
+      pago, kilero, kileroSpecial, costsSnap, totalCost, profit,
     };
     try {
       // Limpiar undefined antes de guardar en Firestore
@@ -4332,6 +4385,8 @@ ${sep}`;
           totals={totals} resetCalc={resetCalc} saveQuote={saveQuote}
           copyMessage={copyMessage} canCopy={hasValidLines}
           customTotal={customTotal} setCustomTotal={setCustomTotal}
+          kileroActive={kileroActive} kileroAuto={kileroAuto} kileroSpecial={kileroSpecial}
+          onKileroToggle={handleKileroToggle}
         />
       )}
       {tab === 'hist' && (
@@ -4347,6 +4402,50 @@ ${sep}`;
       )}
 
       <div className={"toast" + (toast ? " show" : "")}>{toast}</div>
+
+      {/* ── Modal autorización kilero especial ── */}
+      {showKileroModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.78)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000,padding:20}}>
+          <div style={{background:'var(--panel)',borderRadius:18,padding:'24px 22px',maxWidth:340,width:'100%',border:'1px solid var(--line)',boxShadow:'0 24px 60px rgba(0,0,0,.5)'}}>
+            <div style={{fontFamily:'var(--mono)',fontSize:10,letterSpacing:'.14em',color:'var(--gold-2)',textTransform:'uppercase',marginBottom:6}}>⭐ Venta Especial</div>
+            <h3 style={{margin:'0 0 12px',fontSize:17,fontWeight:800}}>Requiere autorización</h3>
+            <p style={{fontSize:13,color:'var(--ink-dim)',lineHeight:1.55,margin:'0 0 10px'}}>
+              Esta venta <strong>no cumple</strong> las condiciones para precio kilero:
+            </p>
+            <div style={{background:'var(--bg-2)',border:'1px solid var(--line)',borderRadius:10,padding:'10px 14px',marginBottom:14,fontSize:12,fontFamily:'var(--mono)',color:'var(--ink-dim)',lineHeight:1.7}}>
+              <div>• Venta mayor a <strong style={{color:'var(--ink)'}}>$250.000</strong></div>
+              <div>• Peso mayor a <strong style={{color:'var(--ink)'}}>500g</strong></div>
+            </div>
+            <p style={{fontSize:13,color:'var(--ink-dim)',lineHeight:1.5,margin:'0 0 14px'}}>
+              Para aplicar precio kilero como <strong>Venta Especial</strong>, ingresa el código de <strong>Diego Aravena</strong>.
+            </p>
+            <input
+              type="password"
+              placeholder="Código de autorización"
+              value={kileroCodeInput}
+              onChange={e=>setKileroCodeInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&submitKileroCode()}
+              autoFocus
+              style={{width:'100%',fontFamily:'var(--mono)',fontSize:15,padding:'11px 14px',borderRadius:10,border:'1px solid var(--line)',background:'var(--bg-2)',color:'var(--ink)',marginBottom:8,boxSizing:'border-box',outline:'none'}}
+            />
+            {kileroCodeError && (
+              <div style={{color:'#f87171',fontSize:11,fontFamily:'var(--mono)',marginBottom:10,padding:'6px 10px',background:'rgba(248,113,113,.08)',borderRadius:6,border:'1px solid rgba(248,113,113,.2)'}}>
+                {kileroCodeError}
+              </div>
+            )}
+            <div style={{display:'flex',gap:8,marginTop:4}}>
+              <button onClick={()=>{setShowKileroModal(false);setKileroCodeInput('');setKileroCodeError('');}}
+                style={{flex:1,padding:'11px',borderRadius:10,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-dim)',cursor:'pointer',fontFamily:'var(--mono)',fontSize:12,fontWeight:600}}>
+                Cancelar
+              </button>
+              <button onClick={submitKileroCode}
+                style={{flex:1,padding:'11px',borderRadius:10,border:'none',background:'var(--gold-2)',color:'#000',cursor:'pointer',fontFamily:'var(--mono)',fontSize:12,fontWeight:800}}>
+                Confirmar ⭐
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === 'calc' && (
         <button className="fab" onClick={() => copyMessage()} disabled={!hasValidLines}>
