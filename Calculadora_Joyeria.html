@@ -2432,11 +2432,9 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
               <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:4}}>
                 {items.map(h => {
                   const totalG = Math.round(h.lines.reduce((s,l)=>l.category===INSUMO_KEY?s:s+(Number(l.grams)||0),0)*10)/10;
+                  const isKilero = h.kilero || meetsKileroConditions(h.total||0, h.totalWeight||0);
+                  const isSpecial = h.kileroSpecial;
                   return (
-                    {(()=>{
-                      const isKilero = h.kilero || meetsKileroConditions(h.total||0, h.totalWeight||0);
-                      const isSpecial = h.kileroSpecial;
-                      return (
                     <div className={`quote${h.concretada ? ' q-ok' : ''}`} key={h.id}
                       style={isKilero ? {borderColor:'rgba(201,168,76,.55)',boxShadow:'0 0 0 1px rgba(201,168,76,.18)'} : {}}>
 
@@ -2532,8 +2530,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                       </div>
 
                     </div>
-                      );
-                    })()}
+                  );
+                })}
               </div>
             </React.Fragment>
           ))}
