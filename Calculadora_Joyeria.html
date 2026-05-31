@@ -2718,7 +2718,9 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         }
       }
     }
+    const baseCost=periodQuotes.length*1000;
     const rows=Object.values(cats).filter(v=>v.cost>0).sort((a,b)=>b.cost-a.cost);
+    if(baseCost>0) rows.push({name:'Base / Bolsas',emoji:'🛍️',cost:baseCost});
     const total=rows.reduce((s,v)=>s+v.cost,0);
     return {rows,total};
   },[periodQuotes,prices]);
