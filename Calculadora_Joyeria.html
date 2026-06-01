@@ -2841,16 +2841,16 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   },[periodQuotes,prices]);
 
   const liquidacion = useMemo(()=>{
+    // Empresa recibe todo lo que no es comisión del equipo (incluye su 30% + costos + absorbe pérdidas)
+    // Así los balances suman $0 siempre: sum(comision_i) + empresaRecibe = totalVentas = totalPagos
+    const empresaRecibe = summary.totalVentas - summary.totalComisionEquipo;
     const allNames=new Set([...summary.rows.map(r=>r.name),...Object.keys(summary.pagosByPerson||{})]);
     const rows=[...allNames].map(name=>{
       const row=summary.rows.find(r=>r.name===name)||{comision:0};
-      const comision=row.comision||0;
       const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
-      // Empresa recibe costos de mercadería además de su comisión
-      const balance=name===EMPRESA
-        ? comision+summary.totalCostos-pagosRecibidos
-        : comision-pagosRecibidos;
-      return {name,comision,pagosRecibidos,balance,isEmpresa:name===EMPRESA};
+      const efectivo=name===EMPRESA ? empresaRecibe : (row.comision||0);
+      const balance=efectivo-pagosRecibidos;
+      return {name,comision:efectivo,pagosRecibidos,balance,isEmpresa:name===EMPRESA};
     }).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
     const totalBalance=rows.reduce((s,r)=>s+r.balance,0);
     const totalPagos=rows.reduce((s,r)=>s+r.pagosRecibidos,0);
@@ -3106,16 +3106,9 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                   const td=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
                   return(
                   <tr key={r.name}>
-                    <td style={td(false,true,c)}>
-                      {r.name}
-                      {r.isEmpresa&&<span style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--ink-mute)',marginLeft:4,fontWeight:400}}>(+costos)</span>}
-                    </td>
+                    <td style={td(false,true,c)}>{r.name}</td>
                     <td style={td(true,false)}>{r.pagosRecibidos>0?`$${fmtCLP(Math.round(r.pagosRecibidos))}`:'—'}</td>
-                    <td style={td(true,false)}>
-                      {r.isEmpresa
-                        ?`$${fmtCLP(Math.round(r.comision+summary.totalCostos))}`
-                        :r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}
-                    </td>
+                    <td style={td(true,false)}>{r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}</td>
                     <td style={td(true,true,balColor)}>
                       {r.balance===0?'—':`${r.balance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
                     </td>
@@ -3136,7 +3129,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                         </span>
                       </td>
                       <td style={totStyle(true)}>{`$${fmtCLP(Math.round(liquidacion.totalPagos))}`}</td>
-                      <td style={totStyle(true)}>{`$${fmtCLP(Math.round(summary.totalComisionEquipo+summary.totalEmpresa+summary.totalCostos))}`}</td>
+                      <td style={totStyle(true)}>{`$${fmtCLP(Math.round(summary.totalVentas))}`}</td>
                       <td style={totStyle(true,cuadra?'#4ade80':'var(--danger)')}>
                         {cuadra?'✓ $0':`${liquidacion.totalBalance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(liquidacion.totalBalance)))}`}
                       </td>
