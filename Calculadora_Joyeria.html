@@ -769,6 +769,8 @@ const CAT_CHIP_STYLE = {
 };
 const EMPRESA = "Empresa";
 const PCT_SCHEDULER = 0.35;
+const _PPAL=['#c9a84c','#4ade80','#38bdf8','#f472b6','#a78bfa','#fb923c','#6ee7b7','#f87171','#34d399','#60a5fa','#fbbf24','#e879f9'];
+const personColor=(name)=>{let h=0;for(let i=0;i<name.length;i++)h=(Math.imul(31,h)+name.charCodeAt(i))|0;return _PPAL[Math.abs(h)%_PPAL.length];};
 const PCT_ATTENDANT = 0.35;
 const PCT_EMPRESA   = 0.30;
 
@@ -3019,7 +3021,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
             {summary.rows.map((r,i)=>{
               const tot=summary.totalComisionEquipo+summary.totalEmpresa;
               const pct=tot?Math.round(r.comision/tot*100):0;
-              const color=r.name===EMPRESA?'#a0a0a0':PAL[i%PAL.length];
+              const color=r.name===EMPRESA?'#a0a0a0':personColor(r.name);
               const isEmpresa=r.name===EMPRESA;
               return(
               <div key={r.name} style={{padding:'10px 16px',borderBottom:'1px solid var(--line)'}}>
@@ -3052,55 +3054,55 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       )}
 
       {/* ── ventas por persona — período activo ── */}
-      {personRanking.rows.length>0&&(()=>{
-        const PAL=['#c9a84c','#6ee7b7','#4ade80','#38bdf8','#f472b6','#818cf8'];
-        return(
+      {personRanking.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Ventas <em>por persona</em></h3><span className="eyebrow">{activeLabel}</span></div>
           <div style={{padding:'10px 16px 14px'}}>
-            {personRanking.rows.map((r,i)=>(
+            {personRanking.rows.map((r)=>{
+              const c=personColor(r.name);
+              return(
               <div key={r.name} style={{marginBottom:10}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:c}}>{r.name}</span>
                   <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-dim)'}}>${fmtCLP(r.total)} · {r.count} {r.count===1?'venta':'ventas'}</span>
                 </div>
                 <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(r.total/personRanking.maxT*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                  <div style={{height:'100%',width:`${Math.round(r.total/personRanking.maxT*100)}%`,background:c,borderRadius:3,transition:'width .4s'}}/>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* ── ranking agendadores — periodo activo ── */}
-      {agendadoresRanking.rows.length>0&&(()=>{
-        const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c'];
-        return(
+      {agendadoresRanking.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Agendadores <em>ranking</em></h3><span className="eyebrow">{activeLabel} · por agendas</span></div>
           <div style={{padding:'10px 16px 14px'}}>
-            {agendadoresRanking.rows.map((r,i)=>(
+            {agendadoresRanking.rows.map((r)=>{
+              const c=personColor(r.name);
+              return(
               <div key={r.name} style={{marginBottom:11}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:4}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:PAL[i%PAL.length]}}>{r.name}</span>
-                  <span style={{fontFamily:'var(--mono)',fontSize:12,color:PAL[i%PAL.length],fontWeight:700}}>{r.count} <span style={{fontWeight:400,color:'var(--ink-mute)',fontSize:11}}>agendas</span></span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:c}}>{r.name}</span>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,color:c,fontWeight:700}}>{r.count} <span style={{fontWeight:400,color:'var(--ink-mute)',fontSize:11}}>agendas</span></span>
                 </div>
                 <div style={{height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(r.count/agendadoresRanking.maxC*100)}%`,background:PAL[i%PAL.length],borderRadius:3,transition:'width .4s'}}/>
+                  <div style={{height:'100%',width:`${Math.round(r.count/agendadoresRanking.maxC*100)}%`,background:c,borderRadius:3,transition:'width .4s'}}/>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* ── mejor día / mejor hora de ventas ── */}
       {salesPattern.topDow.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
+          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
           <div style={{padding:'12px 16px 14px'}}>
             {salesPattern.topDow.map((d,i)=>(
               <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
@@ -3116,7 +3118,7 @@ function ReportsTab({ history, prices, onToggleConcretada }){
       )}
       {salesPattern.topSlot.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">patrón histórico</span></div>
+          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
           <div style={{padding:'12px 16px 14px'}}>
             {salesPattern.topSlot.map((s,i)=>(
               <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
@@ -3648,8 +3650,7 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(groupedTimeData.length).fill(0)};
       byP[k].vals[bIdx]+=Number(q.total)||0;
     }
-    const PAL=['#c9a84c','#6ee7b7','#38bdf8','#f472b6','#a78bfa','#fb923c','#f87171','#34d399','#60a5fa','#fbbf24','#e879f9','#94a3b8'];
-    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p)=>({...p,color:personColor(p.name)}));
     return {labels,series};
   },[groupedTimeData,visibleSales]);
 
@@ -3662,8 +3663,7 @@ function ChartsTab({ history, prices }) {
       if(!byP[k]) byP[k]={name:k,vals:Array(groupedTimeData.length).fill(0)};
       byP[k].vals[bIdx]++;
     }
-    const PAL=['#4ade80','#38bdf8','#c9a84c','#f472b6','#a78bfa','#fb923c','#f87171','#34d399','#60a5fa','#fbbf24','#e879f9','#94a3b8'];
-    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p,i)=>({...p,color:PAL[i%PAL.length]}));
+    const series=Object.values(byP).sort((a,b)=>b.vals.reduce((s,v)=>s+v,0)-a.vals.reduce((s,v)=>s+v,0)).map((p)=>({...p,color:personColor(p.name)}));
     return {labels,series};
   },[groupedTimeData,visibleSales]);
 
