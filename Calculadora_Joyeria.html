@@ -2844,12 +2844,14 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
     const empresaRecibe = summary.totalVentas - summary.totalComisionEquipo;
     const allNames=new Set([...summary.rows.map(r=>r.name),...Object.keys(summary.pagosByPerson||{})]);
     const rows=[...allNames].map(name=>{
-      const row=summary.rows.find(r=>r.name===name)||{comision:0};
+      const row=summary.rows.find(r=>r.name===name)||{comision:0,agendado:0,atendido:0,empresa:0};
       const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
       const efectivo=name===EMPRESA ? empresaRecibe : (row.comision||0);
       const balance=efectivo-pagosRecibidos;
       return {
         name,comision:efectivo,pagosRecibidos,balance,isEmpresa:name===EMPRESA,
+        agendado: row.agendado||0,
+        atendido: row.atendido||0,
         empresaComision: name===EMPRESA ? summary.totalEmpresa : null,
         empresaCostos:   name===EMPRESA ? summary.totalCostos  : null,
       };
@@ -3068,14 +3070,21 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                   <div style={{width:36,height:36,borderRadius:'50%',background:`${c}18`,border:`2px solid ${c}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                     <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:800,color:c}}>{ini}</span>
                   </div>
-                  <div>
+                  <div style={{minWidth:0}}>
                     <div style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:700,color:c}}>{r.name}</div>
-                    {r.isEmpresa&&(
-                      <div style={{display:'flex',gap:4,marginTop:3,flexWrap:'wrap'}}>
-                        <span style={{fontFamily:'var(--mono)',fontSize:9,background:'rgba(160,160,160,.15)',color:'#a0a0a0',borderRadius:4,padding:'2px 6px'}}>30% com. ${fmtCLP(Math.round(r.empresaComision))}</span>
-                        <span style={{fontFamily:'var(--mono)',fontSize:9,background:'rgba(251,191,36,.1)',color:'var(--gold-2)',borderRadius:4,padding:'2px 6px'}}>costos ${fmtCLP(Math.round(r.empresaCostos))}</span>
-                      </div>
-                    )}
+                    {/* origen de comisiones */}
+                    <div style={{display:'flex',gap:6,marginTop:3,flexWrap:'wrap'}}>
+                      {r.isEmpresa?(
+                        <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}}>
+                          30% com. <b style={{color:'#a0a0a0'}}>${fmtCLP(Math.round(r.empresaComision))}</b>
+                        </span>
+                      ):(
+                        <>
+                          {r.agendado>0&&<span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}}>Agendó <b style={{color:c}}>${fmtCLP(Math.round(r.agendado))}</b></span>}
+                          {r.atendido>0&&<span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}}>Atendió <b style={{color:c}}>${fmtCLP(Math.round(r.atendido))}</b></span>}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {/* fila de 3 columnas con separadores */}
@@ -3093,10 +3102,15 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                     </div>
                   </div>
                   <div style={{padding:'7px 10px',textAlign:'center',background:balBg}}>
-                    <div style={{fontFamily:'var(--mono)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',color:balColor,opacity:.7,marginBottom:3}}>{balPos?'Recibe':'Devuelve'}</div>
+                    <div style={{fontFamily:'var(--mono)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',color:balColor,opacity:.7,marginBottom:2}}>{balPos?'Recibe':'Devuelve'}</div>
                     <div style={{fontFamily:'var(--mono)',fontSize:14,fontWeight:800,color:balColor}}>
                       {r.balance===0?'$0':`${balPos?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
                     </div>
+                    {r.isEmpresa&&r.empresaCostos>0&&(
+                      <div style={{fontFamily:'var(--mono)',fontSize:7.5,color:balColor,opacity:.6,marginTop:2,letterSpacing:'.04em'}}>
+                        com.+costos inc.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
