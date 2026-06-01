@@ -628,6 +628,19 @@
   }
   .theme-hex{font-family:var(--mono);font-size:11px;color:var(--ink-dim);letter-spacing:.05em}
 
+  /* News ticker */
+  .ticker-wrap{overflow:hidden;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;position:relative}
+  .ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}
+  .ticker-wrap::before{left:0;background:linear-gradient(90deg,var(--bg-2),transparent)}
+  .ticker-wrap::after{right:0;background:linear-gradient(270deg,var(--bg-2),transparent)}
+  .ticker-track{display:flex;width:max-content;animation:ticker-scroll 28s linear infinite}
+  .ticker-track:hover{animation-play-state:paused}
+  @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .ticker-item{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-right:1px solid var(--line);white-space:nowrap;font-family:var(--mono);font-size:12px}
+  .ticker-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-mute)}
+  .ticker-val{font-size:13px;font-weight:800;letter-spacing:-.01em}
+  .ticker-sub{font-size:9px;color:var(--ink-mute);margin-left:2px}
+
 </style>
 </head>
 <body>
@@ -2615,6 +2628,26 @@ const yearLabel     = (k) => k;
 const quarterLabel  = (k) => { const [y,q]=k.split('-Q'); return `${q}°T ${y}`; };
 const semesterLabel = (k) => { const [y,h]=k.split('-H'); return `${h}°S ${y}`; };
 
+// ── Ticker de noticias ──────────────────────────────────────────────────
+function TickerBand({items}){
+  if(!items||!items.length) return null;
+  const all=[...items,...items];
+  return(
+    <div className="ticker-wrap">
+      <div className="ticker-track">
+        {all.map((item,i)=>(
+          <span key={i} className="ticker-item">
+            <span style={{fontSize:14}}>{item.icon}</span>
+            <span className="ticker-label">{item.label}</span>
+            <span className="ticker-val" style={{color:item.color||'var(--ink-dim)'}}>{item.value}</span>
+            {item.sub&&<span className="ticker-sub">{item.sub}</span>}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   const [period, setPeriod] = useState('monthly');
   const [navIdx, setNavIdx] = useState(0);
@@ -2628,6 +2661,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   const allYears = useMemo(()=>{ const s=new Set(history.map(q=>yearKey(q.at))); s.add(yearKey(Date.now())); return [...s].sort().reverse(); },[history]);
 
   const { activeList, labelFn, keyFn, periodName } = useMemo(()=>{
+    if(period==='all')   return { activeList:['all'], labelFn:()=>'Todo el historial', keyFn:()=>'all', periodName:'Histórico' };
     if(period==='daily')  return { activeList:allDays,   labelFn:dayLabel,   keyFn:dayKey,   periodName:'Diario'  };
     if(period==='weekly') return { activeList:allWeeks,  labelFn:weekLabel,  keyFn:weekKey,  periodName:'Semanal' };
     if(period==='yearly') return { activeList:allYears,  labelFn:yearLabel,  keyFn:yearKey,  periodName:'Anual'   };
@@ -2638,7 +2672,10 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   const activeKey   = activeList[boundedIdx] || '';
   const activeLabel = activeKey ? labelFn(activeKey) : '';
 
-  const periodQuotes = useMemo(()=>history.filter(q=>keyFn(q.at)===activeKey&&q.concretada),[history,keyFn,activeKey]);
+  const periodQuotes = useMemo(()=>{
+    if(period==='all') return history.filter(q=>q.concretada);
+    return history.filter(q=>keyFn(q.at)===activeKey&&q.concretada);
+  },[history,keyFn,activeKey,period]);
 
   // Período anterior para delta
   const prevKey = useMemo(()=>{
@@ -2982,13 +3019,14 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
     <div className="fade-in">
 
       {/* ── period chips ── */}
-      <div className="chart-period-sel" style={{marginBottom:10}}>
-        {[['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
+      <div className="chart-period-sel" style={{marginBottom:10,flexWrap:'wrap'}}>
+        {[['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual'],['all','Todo']].map(([k,lbl])=>(
           <button key={k} className={`chart-period-btn${period===k?' active':''}`} onClick={()=>setPeriod(k)}>{lbl}</button>
         ))}
       </div>
 
-      {/* ── nav bar ── */}
+      {/* ── nav bar (oculto en modo Todo) ── */}
+      {period!=='all'&&(
       <div className="chart-nav">
         <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.min(i+1,activeList.length-1))} disabled={boundedIdx>=activeList.length-1}>‹</button>
         <div className="chart-nav-center">
@@ -2997,35 +3035,26 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         </div>
         <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.max(i-1,0))} disabled={navIdx===0}>›</button>
       </div>
+      )}
+      {period==='all'&&(
+      <div className="chart-nav" style={{marginBottom:8}}>
+        <div className="chart-nav-center"><div className="chart-nav-label" style={{fontSize:13}}>Todo el historial · {periodQuotes.length} ventas</div></div>
+      </div>
+      )}
 
-      {/* ── KPIs 3-col ── */}
+      {/* ── Ticker de métricas estilo TV ── */}
       {(()=>{
-        const DeltaBadge=({d})=>d===null?null:(
-          <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,color:d>=0?'#4ade80':'var(--danger)',display:'block',marginTop:2}}>
-            {d>=0?'↑':'↓'}{Math.abs(d)}% vs anterior
-          </span>
-        );
-        return(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:8}}>
-          <div className="chart-kpi">
-            <div className="chart-kpi-label">Ventas</div>
-            <div className="chart-kpi-value" style={{fontSize:11,color:'var(--gold-2)'}}>{fmt$(summary.totalVentas)}</div>
-            <DeltaBadge d={deltaVentas}/>
-            <div className="chart-kpi-sub">{periodQuotes.length} venta{periodQuotes.length!==1?'s':''}</div>
-          </div>
-          <div className="chart-kpi">
-            <div className="chart-kpi-label">Costos</div>
-            <div className="chart-kpi-value" style={{fontSize:11}}>{fmt$(summary.totalCostos)}</div>
-            <div className="chart-kpi-sub">Mercadería</div>
-          </div>
-          <div className="chart-kpi">
-            <div className="chart-kpi-label">Ganancia</div>
-            <div className="chart-kpi-value" style={{fontSize:11,color:summary.totalGanancia>=0?'var(--gold-2)':'var(--danger)'}}>{fmt$(Math.abs(Math.round(summary.totalGanancia)))}</div>
-            <DeltaBadge d={deltaGanancia}/>
-            <div className="chart-kpi-sub">{summary.margen}% margen</div>
-          </div>
-        </div>
-        );
+        const g=summary.totalGanancia;
+        const items=[
+          {icon:'📊',label:'Ventas',value:fmt$(summary.totalVentas),color:'var(--gold-2)',sub:`· ${periodQuotes.length} venta${periodQuotes.length!==1?'s':''}`},
+          {icon:'💰',label:'Ganancia',value:fmt$(Math.abs(Math.round(g))),color:g>=0?'#4ade80':'var(--danger)',sub:`· ${summary.margen}% margen`},
+          {icon:'💸',label:'Costos',value:fmt$(summary.totalCostos),color:'var(--ink-dim)',sub:'mercadería'},
+          ...(deltaVentas!==null?[{icon:deltaVentas>=0?'↑':'↓',label:'vs anterior',value:`${Math.abs(deltaVentas)}%`,color:deltaVentas>=0?'#4ade80':'var(--danger)',sub:'ventas'}]:[]),
+          ...(deltaGanancia!==null?[{icon:deltaGanancia>=0?'↑':'↓',label:'ganancia',value:`${Math.abs(deltaGanancia)}%`,color:deltaGanancia>=0?'#4ade80':'var(--danger)',sub:'vs ant.'}]:[]),
+          ...(ticketPromedio>0?[{icon:'🎫',label:'Ticket prom.',value:fmt$(ticketPromedio),color:'var(--ink-dim)'}]:[]),
+          ...(tasaConversion!==null?[{icon:'🎯',label:'Conversión',value:`${tasaConversion}%`,color:tasaConversion>=60?'#4ade80':tasaConversion>=30?'var(--gold-2)':'var(--danger)'}]:[]),
+        ];
+        return items.length>0&&<TickerBand items={items}/>;
       })()}
 
       {/* ── inteligencia de negocio ── */}
@@ -3652,6 +3681,7 @@ const CHART_PERIODS = [
   { key:'week',  label:'Semanal' },
   { key:'month', label:'Mensual' },
   { key:'year',  label:'Anual'   },
+  { key:'all',   label:'Todo'    },
 ];
 
 function ChartsTab({ history, prices }) {
@@ -3665,6 +3695,11 @@ function ChartsTab({ history, prices }) {
   const navRange = useMemo(()=>{
     const now=new Date();
     const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    if(period==='all'){
+      const minTs=history.filter(q=>q.concretada).reduce((m,q)=>Math.min(m,q.at||Date.now()),Date.now());
+      const startY=new Date(minTs).getFullYear();
+      return {start:new Date(startY,0,1),end:new Date(now.getFullYear()+1,0,1),label:'Todo el historial'};
+    }
     if(period==='day'){
       const start=new Date(today.getTime()-navOffset*864e5);
       const end=new Date(start.getTime()+864e5);
@@ -3696,7 +3731,12 @@ function ChartsTab({ history, prices }) {
   const timeData = useMemo(()=>{
     const {start,end}=navRange;
     const buckets=[];
-    if(period==='day'){
+    if(period==='all'){
+      for(let y=start.getFullYear();y<=end.getFullYear();y++){
+        const s=new Date(y,0,1).getTime(),e=new Date(y+1,0,1).getTime();
+        buckets.push({key:String(y),label:String(y),start:s,end:e,total:0,ganancia:0,count:0});
+      }
+    }else if(period==='day'){
       for(let h=0;h<24;h+=2){
         const s=start.getTime()+h*3600000;
         buckets.push({key:String(h),label:`${String(h).padStart(2,'0')}h`,start:s,end:s+7200000,total:0,ganancia:0,count:0});
@@ -3993,12 +4033,13 @@ function ChartsTab({ history, prices }) {
   return (
     <div className="fade-in">
       {/* ── period chips ── */}
-      <div className="chart-period-sel" style={{marginBottom:10}}>
+      <div className="chart-period-sel" style={{marginBottom:10,flexWrap:'wrap'}}>
         {CHART_PERIODS.map(p=>(
           <button key={p.key} className={`chart-period-btn${period===p.key?' active':''}`} onClick={()=>setPeriod(p.key)}>{p.label}</button>
         ))}
       </div>
-      {/* ── nav bar: arrows + label + volver ── */}
+      {/* ── nav bar: arrows + label + volver (oculto en Todo) ── */}
+      {period!=='all'?(
       <div className="chart-nav">
         <button className="chart-nav-btn" onClick={()=>setNavOffset(o=>o+1)}>‹</button>
         <div className="chart-nav-center">
@@ -4007,15 +4048,21 @@ function ChartsTab({ history, prices }) {
         </div>
         <button className="chart-nav-btn" onClick={()=>setNavOffset(o=>Math.max(0,o-1))} disabled={navOffset===0}>›</button>
       </div>
+      ):(
+      <div className="chart-nav" style={{marginBottom:8}}>
+        <div className="chart-nav-center"><div className="chart-nav-label" style={{fontSize:13}}>Todo el historial · {kpis.count} ventas</div></div>
+      </div>
+      )}
       {!hasData?(
         <div className="card"><div className="chart-empty"><div style={{fontSize:36,marginBottom:12}}>📊</div><p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p><p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p></div></div>
       ):(
         <div className="charts-grid">
-          <div className="chart-kpi-row">
-            <div className="chart-kpi"><div className="chart-kpi-label">Ventas</div><div className="chart-kpi-value" style={{fontSize:12}}>${fmtCLP(kpis.ventas)}</div><div className="chart-kpi-sub">{kpis.count} venta{kpis.count!==1?'s':''}</div></div>
-            <div className="chart-kpi"><div className="chart-kpi-label">Ganancia</div><div className="chart-kpi-value" style={{fontSize:12,color:kpis.ganancia>=0?'var(--gold-2)':'var(--danger)'}}>${fmtCLP(Math.abs(Math.round(kpis.ganancia)))}</div><div className="chart-kpi-sub">Neta</div></div>
-            <div className="chart-kpi"><div className="chart-kpi-label">Margen</div><div className="chart-kpi-value" style={{fontSize:13,color:kpis.margen>=30?'var(--gold-2)':kpis.margen>=15?'var(--ink)':'var(--danger)'}}>{kpis.margen}%</div><div className="chart-kpi-sub">Bruto</div></div>
-          </div>
+          <TickerBand items={[
+            {icon:'📊',label:'Ventas',value:`$${fmtCLP(kpis.ventas)}`,color:'var(--gold-2)',sub:`· ${kpis.count} venta${kpis.count!==1?'s':''}`},
+            {icon:'💰',label:'Ganancia',value:`$${fmtCLP(Math.abs(Math.round(kpis.ganancia)))}`,color:kpis.ganancia>=0?'#4ade80':'var(--danger)',sub:'neta'},
+            {icon:'📈',label:'Margen',value:`${kpis.margen}%`,color:kpis.margen>=30?'#4ade80':kpis.margen>=15?'var(--gold-2)':'var(--danger)',sub:'bruto'},
+            {icon:'💸',label:'Costos',value:`$${fmtCLP(Math.round(kpis.ventas-kpis.ganancia))}`,color:'var(--ink-dim)'},
+          ]}/>
           <div className="chart-card">
             <div className="chart-head">
               <h3>Venta <em>vs</em> Ganancia</h3>
