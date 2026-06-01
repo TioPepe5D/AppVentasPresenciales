@@ -2304,17 +2304,26 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
   const [filterAttendant, setFilterAttendant] = useState("");
   const [filterScheduler, setFilterScheduler] = useState("");
   const [filterPago, setFilterPago] = useState("");
-  const [filterPeriod, setFilterPeriod] = useState("");
   const [filterKilo, setFilterKilo] = useState("");
+  const [period, setPeriod] = useState('');
+  const [navIdx, setNavIdx] = useState(0);
 
-  const periodBounds = useMemo(()=>{
-    const now = new Date();
-    const sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sow = new Date(sod); sow.setDate(sod.getDate()-((sod.getDay()+6)%7));
-    const som = new Date(now.getFullYear(), now.getMonth(), 1);
-    const soy = new Date(now.getFullYear(), 0, 1);
-    return {daily:sod.getTime(), weekly:sow.getTime(), monthly:som.getTime(), yearly:soy.getTime()};
-  },[]);
+  const allDays   = useMemo(()=>{ const s=new Set(history.map(q=>dayKey(q.at)));   s.add(dayKey(Date.now()));   return [...s].sort().reverse(); },[history]);
+  const allWeeks  = useMemo(()=>{ const s=new Set(history.map(q=>weekKey(q.at)));  s.add(weekKey(Date.now()));  return [...s].sort().reverse(); },[history]);
+  const allMonths = useMemo(()=>{ const s=new Set(history.map(q=>monthKey(q.at))); s.add(monthKey(Date.now())); return [...s].sort().reverse(); },[history]);
+  const allYears  = useMemo(()=>{ const s=new Set(history.map(q=>yearKey(q.at)));  s.add(yearKey(Date.now()));  return [...s].sort().reverse(); },[history]);
+
+  const { activeList, labelFn, keyFn: histKeyFn } = useMemo(()=>{
+    if(period==='daily')  return { activeList:allDays,   labelFn:dayLabel,   keyFn:dayKey   };
+    if(period==='weekly') return { activeList:allWeeks,  labelFn:weekLabel,  keyFn:weekKey  };
+    if(period==='yearly') return { activeList:allYears,  labelFn:yearLabel,  keyFn:yearKey  };
+    if(period==='monthly') return { activeList:allMonths, labelFn:monthLabel, keyFn:monthKey };
+    return { activeList:[], labelFn:()=>'', keyFn:()=>'' };
+  },[period,allDays,allWeeks,allMonths,allYears]);
+
+  const boundedIdx  = Math.min(navIdx, Math.max(0, activeList.length-1));
+  const activeHKey  = period ? (activeList[boundedIdx]||'') : '';
+  const activeHLabel = activeHKey ? labelFn(activeHKey) : '';
 
   const uniqueNames = useMemo(() => {
     const att=new Set(), sched=new Set(), pago=new Set();
@@ -2328,7 +2337,6 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const bound = filterPeriod ? periodBounds[filterPeriod] : null;
     return history.filter(h => {
       if (needle && !(
         (h.client || '').toLowerCase().includes(needle) ||
@@ -2343,16 +2351,16 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
       if (filterAttendant && normName(h.attendant||'') !== filterAttendant) return false;
       if (filterScheduler && normName(h.scheduler||'') !== filterScheduler) return false;
       if (filterPago && normName(h.pago||'') !== filterPago) return false;
-      if (bound !== null && new Date(h.at).getTime() < bound) return false;
+      if (period && activeHKey && histKeyFn(h.at) !== activeHKey) return false;
       const hKilero = h.kilero || meetsKileroConditions(h.total||0, h.totalWeight||0);
       if (filterKilo === 'kilo' && !hKilero) return false;
       if (filterKilo === 'individual' && hKilero) return false;
       return true;
     });
-  }, [q, filterAttendant, filterScheduler, filterPago, filterPeriod, filterKilo, periodBounds, history, prices]);
+  }, [q, filterAttendant, filterScheduler, filterPago, period, filterKilo, activeHKey, histKeyFn, history, prices]);
 
   const hasFilters = filterAttendant || filterScheduler || filterPago || filterKilo;
-  const clearAll = ()=>{setFilterAttendant('');setFilterScheduler('');setFilterPago('');setFilterKilo('');setFilterPeriod('');};
+  const clearAll = ()=>{setFilterAttendant('');setFilterScheduler('');setFilterPago('');setFilterKilo('');setPeriod('');setNavIdx(0);};
 
   const dayGroups = useMemo(() => {
     const groups = [], seen = new Map();
@@ -2381,12 +2389,21 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
 
-      {/* ── chips de período ── */}
+      {/* ── chips de período estilo Reportes ── */}
       <div style={{padding:'4px 14px 2px',display:'flex',gap:6,flexWrap:'wrap'}}>
-        {[['','Todos'],['daily','Hoy'],['weekly','Semana'],['monthly','Mes'],['yearly','Año']].map(([k,lbl])=>(
-          <button key={k} style={chipStyle(filterPeriod===k)} onClick={()=>setFilterPeriod(k)}>{lbl}</button>
+        {[['','Todos'],['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
+          <button key={k} style={chipStyle(period===k)} onClick={()=>{setPeriod(k);setNavIdx(0);}}>{lbl}</button>
         ))}
       </div>
+      {period&&activeHKey&&(
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 14px 6px'}}>
+          <button onClick={()=>setNavIdx(i=>Math.min(i+1,activeList.length-1))} disabled={boundedIdx>=activeList.length-1}
+            style={{width:32,height:32,borderRadius:'50%',border:'1px solid var(--line)',background:'var(--bg-2)',display:'grid',placeItems:'center',fontSize:14,color:'var(--ink-dim)',cursor:'pointer',flexShrink:0,opacity:boundedIdx>=activeList.length-1?.3:1}}>‹</button>
+          <div style={{flex:1,textAlign:'center',fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:'var(--ink)',textTransform:'capitalize'}}>{activeHLabel}</div>
+          <button onClick={()=>setNavIdx(i=>Math.max(i-1,0))} disabled={boundedIdx<=0}
+            style={{width:32,height:32,borderRadius:'50%',border:'1px solid var(--line)',background:'var(--bg-2)',display:'grid',placeItems:'center',fontSize:14,color:'var(--ink-dim)',cursor:'pointer',flexShrink:0,opacity:boundedIdx<=0?.3:1}}>›</button>
+        </div>
+      )}
 
       {/* ── selects ── */}
       {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0||true) && (
@@ -2414,7 +2431,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
             <option value="kilo">📦 Por kilo</option>
             <option value="individual">💍 Individual</option>
           </select>
-          {(hasFilters||filterPeriod) && (
+          {(hasFilters||period) && (
             <button onClick={clearAll}
               style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
             >✕ Limpiar</button>
@@ -2598,7 +2615,7 @@ const yearLabel     = (k) => k;
 const quarterLabel  = (k) => { const [y,q]=k.split('-Q'); return `${q}°T ${y}`; };
 const semesterLabel = (k) => { const [y,h]=k.split('-H'); return `${h}°S ${y}`; };
 
-function ReportsTab({ history, prices, onToggleConcretada }){
+function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   const [period, setPeriod] = useState('monthly');
   const [navIdx, setNavIdx] = useState(0);
   const [salesOpen, setSalesOpen] = useState(false);
@@ -2820,8 +2837,20 @@ function ReportsTab({ history, prices, onToggleConcretada }){
     const totalComisionEquipo=rows.reduce((s,r)=>s+r.agendado+r.atendido,0);
     const totalEmpresa=rows.reduce((s,r)=>s+r.empresa,0);
     const margen=totalVentas>0?Math.round(totalGanancia/totalVentas*100):0;
-    return {rows,totalVentas,totalCostos,totalGanancia,totalComisionEquipo,totalEmpresa,gramsByGroup,margen};
+    return {rows,totalVentas,totalCostos,totalGanancia,totalComisionEquipo,totalEmpresa,gramsByGroup,margen,pagosByPerson};
   },[periodQuotes,prices]);
+
+  const liquidacion = useMemo(()=>{
+    const allNames=new Set([...summary.rows.map(r=>r.name),...Object.keys(summary.pagosByPerson||{})]);
+    const rows=[...allNames].map(name=>{
+      const row=summary.rows.find(r=>r.name===name)||{comision:0};
+      const comision=row.comision||0;
+      const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
+      const balance=comision-pagosRecibidos;
+      return {name,comision,pagosRecibidos,balance};
+    }).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
+    return rows;
+  },[summary]);
 
   const exportCSV = () => {
     const catToGroup={collar_pulsera_mujer_925:'cadena',collar_pulsera_hombre_925:'cadena',collar_pulsera_micro:'micro',aros_colgantes_925:'micro',anillos_925:'micro',italiana_925:'italiana',gf_18k:'gf18k'};
@@ -3053,6 +3082,44 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         </div>
       )}
 
+      {liquidacion.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Liquidación <em>de pagos</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead>
+                <tr>
+                  {[['Persona','left'],['Pagos Recibidos','right'],['Comisiones','right'],['Balance','right']].map(([lbl,align])=>(
+                    <th key={lbl} style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',padding:'8px 10px',textAlign:align,borderBottom:'1px solid var(--line)',background:'var(--card)',whiteSpace:'nowrap'}}>{lbl}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {liquidacion.map(r=>{
+                  const c=r.name===EMPRESA?'#a0a0a0':personColor(r.name);
+                  const balColor=r.balance>0?'#4ade80':r.balance<0?'var(--danger)':'var(--ink-mute)';
+                  const td=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
+                  return(
+                  <tr key={r.name}>
+                    <td style={td(false,true,c)}>{r.name}</td>
+                    <td style={td(true,false)}>{r.pagosRecibidos>0?`$${fmtCLP(Math.round(r.pagosRecibidos))}`:'—'}</td>
+                    <td style={td(true,false)}>{r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}</td>
+                    <td style={td(true,true,balColor)}>
+                      {r.balance===0?'—':`${r.balance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div style={{padding:'8px 10px 6px',display:'flex',gap:8,flexWrap:'wrap',borderTop:'1px solid var(--line)',background:'var(--bg-2)'}}>
+              <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--gold-2)',fontWeight:700}}>✚ = recibe dinero</span>
+              <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--danger)',fontWeight:700}}>- = debe devolver</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── ventas por persona — período activo ── */}
       {personRanking.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
@@ -3185,7 +3252,10 @@ function ReportsTab({ history, prices, onToggleConcretada }){
         const tdStyle=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
         return(
         <div className="chart-card" style={{overflow:'hidden'}}>
-          <div className="chart-head"><h3>Tabla <em>comparativa</em></h3><span className="eyebrow">toca columna para ordenar</span></div>
+          <div className="chart-head" style={{cursor:onGotoCharts?'pointer':undefined}} onClick={onGotoCharts}>
+            <h3>Tabla <em>comparativa</em></h3>
+            <span className="eyebrow" style={{display:'flex',alignItems:'center',gap:4}}>toca columna para ordenar {onGotoCharts&&<span style={{fontSize:10}}>→ 📊</span>}</span>
+          </div>
           <div style={{overflowX:'auto',WebkitOverflowScrolling:'touch'}}>
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
               <thead>
@@ -4401,7 +4471,7 @@ ${sep}`;
           onToggleConcretada={toggleConcretada} />
       )}
       {tab === 'reports' && (
-        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} />
+        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} />
       )}
       {tab === 'charts' && (
         <ChartsTab history={history} prices={prices} />
