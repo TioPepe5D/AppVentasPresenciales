@@ -633,7 +633,9 @@
   .ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}
   .ticker-wrap::before{left:0;background:linear-gradient(90deg,var(--bg-2),transparent)}
   .ticker-wrap::after{right:0;background:linear-gradient(270deg,var(--bg-2),transparent)}
-  .ticker-track{display:flex;width:max-content;animation:ticker-scroll 28s linear infinite}
+  .ticker-wrap{animation:tickerFadeIn .4s ease}
+  @keyframes tickerFadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+  .ticker-track{display:flex;width:max-content;animation:ticker-scroll 36s linear infinite}
   .ticker-track:hover{animation-play-state:paused}
   @keyframes ticker-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
   .ticker-item{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-right:1px solid var(--line);white-space:nowrap;font-family:var(--mono);font-size:12px}
@@ -3054,7 +3056,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
           ...(ticketPromedio>0?[{icon:'🎫',label:'Ticket prom.',value:fmt$(ticketPromedio),color:'var(--ink-dim)'}]:[]),
           ...(tasaConversion!==null?[{icon:'🎯',label:'Conversión',value:`${tasaConversion}%`,color:tasaConversion>=60?'#4ade80':tasaConversion>=30?'var(--gold-2)':'var(--danger)'}]:[]),
         ];
-        return items.length>0&&<TickerBand items={items}/>;
+        return items.length>0&&<TickerBand key={period+activeKey} items={items}/>;
       })()}
 
       {/* ── inteligencia de negocio ── */}
@@ -4057,7 +4059,7 @@ function ChartsTab({ history, prices }) {
         <div className="card"><div className="chart-empty"><div style={{fontSize:36,marginBottom:12}}>📊</div><p style={{margin:0,color:'var(--ink-dim)',fontWeight:600}}>Sin datos todavía</p><p style={{margin:'6px 0 0',fontSize:12,color:'var(--ink-mute)'}}>Confirma ventas desde Historial para ver tus gráficos</p></div></div>
       ):(
         <div className="charts-grid">
-          <TickerBand items={[
+          <TickerBand key={period+navOffset} items={[
             {icon:'📊',label:'Ventas',value:`$${fmtCLP(kpis.ventas)}`,color:'var(--gold-2)',sub:`· ${kpis.count} venta${kpis.count!==1?'s':''}`},
             {icon:'💰',label:'Ganancia',value:`$${fmtCLP(Math.abs(Math.round(kpis.ganancia)))}`,color:kpis.ganancia>=0?'#4ade80':'var(--danger)',sub:'neta'},
             {icon:'📈',label:'Margen',value:`${kpis.margen}%`,color:kpis.margen>=30?'#4ade80':kpis.margen>=15?'var(--gold-2)':'var(--danger)',sub:'bruto'},
