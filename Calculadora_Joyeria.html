@@ -2846,10 +2846,15 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
       const row=summary.rows.find(r=>r.name===name)||{comision:0};
       const comision=row.comision||0;
       const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
-      const balance=comision-pagosRecibidos;
-      return {name,comision,pagosRecibidos,balance};
+      // Empresa recibe costos de mercadería además de su comisión
+      const balance=name===EMPRESA
+        ? comision+summary.totalCostos-pagosRecibidos
+        : comision-pagosRecibidos;
+      return {name,comision,pagosRecibidos,balance,isEmpresa:name===EMPRESA};
     }).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
-    return rows;
+    const totalBalance=rows.reduce((s,r)=>s+r.balance,0);
+    const totalPagos=rows.reduce((s,r)=>s+r.pagosRecibidos,0);
+    return {rows,totalBalance,totalPagos};
   },[summary]);
 
   const exportCSV = () => {
@@ -3082,7 +3087,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         </div>
       )}
 
-      {liquidacion.length>0&&(
+      {liquidacion.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Liquidación <em>de pagos</em></h3><span className="eyebrow">{activeLabel}</span></div>
           <div style={{overflowX:'auto'}}>
@@ -3095,15 +3100,22 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                 </tr>
               </thead>
               <tbody>
-                {liquidacion.map(r=>{
+                {liquidacion.rows.map(r=>{
                   const c=r.name===EMPRESA?'#a0a0a0':personColor(r.name);
                   const balColor=r.balance>0?'#4ade80':r.balance<0?'var(--danger)':'var(--ink-mute)';
                   const td=(right,bold,color)=>({fontFamily:'var(--mono)',fontSize:12,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:bold?700:500,color:color||'var(--ink-dim)',borderBottom:'1px solid var(--line)',whiteSpace:'nowrap'});
                   return(
                   <tr key={r.name}>
-                    <td style={td(false,true,c)}>{r.name}</td>
+                    <td style={td(false,true,c)}>
+                      {r.name}
+                      {r.isEmpresa&&<span style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--ink-mute)',marginLeft:4,fontWeight:400}}>(+costos)</span>}
+                    </td>
                     <td style={td(true,false)}>{r.pagosRecibidos>0?`$${fmtCLP(Math.round(r.pagosRecibidos))}`:'—'}</td>
-                    <td style={td(true,false)}>{r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}</td>
+                    <td style={td(true,false)}>
+                      {r.isEmpresa
+                        ?`$${fmtCLP(Math.round(r.comision+summary.totalCostos))}`
+                        :r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}
+                    </td>
                     <td style={td(true,true,balColor)}>
                       {r.balance===0?'—':`${r.balance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
                     </td>
@@ -3111,6 +3123,27 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr style={{background:'var(--bg-2)'}}>
+                  {(()=>{
+                    const totStyle=(right,color)=>({fontFamily:'var(--mono)',fontSize:11,padding:'9px 10px',textAlign:right?'right':'left',fontWeight:800,color:color||'var(--ink)',borderTop:'2px solid var(--line)',whiteSpace:'nowrap'});
+                    const cuadra=Math.abs(liquidacion.totalBalance)<1;
+                    const pagosOk=Math.abs(liquidacion.totalPagos-summary.totalVentas)<1;
+                    return(<>
+                      <td style={totStyle(false)}>
+                        <span style={{fontSize:9,color:pagosOk?'#4ade80':'var(--danger)'}}>
+                          {pagosOk?'✓':'✗'} Pagos = Ventas
+                        </span>
+                      </td>
+                      <td style={totStyle(true)}>{`$${fmtCLP(Math.round(liquidacion.totalPagos))}`}</td>
+                      <td style={totStyle(true)}>{`$${fmtCLP(Math.round(summary.totalComisionEquipo+summary.totalEmpresa+summary.totalCostos))}`}</td>
+                      <td style={totStyle(true,cuadra?'#4ade80':'var(--danger)')}>
+                        {cuadra?'✓ $0':`${liquidacion.totalBalance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(liquidacion.totalBalance)))}`}
+                      </td>
+                    </>);
+                  })()}
+                </tr>
+              </tfoot>
             </table>
             <div style={{padding:'8px 10px 6px',display:'flex',gap:8,flexWrap:'wrap',borderTop:'1px solid var(--line)',background:'var(--bg-2)'}}>
               <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--gold-2)',fontWeight:700}}>✚ = recibe dinero</span>
