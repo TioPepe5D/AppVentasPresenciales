@@ -1273,10 +1273,10 @@ const KILERO_CODE = "10";
 const quoteCostAndProfit = (quote, prices) => {
   // Si la venta tiene totalCost guardado, usarlo directamente — evita recálculo incorrecto de LOTEs kilero
   if (typeof quote.totalCost === 'number' && quote.totalCost > 0) {
-    const profit = typeof quote.profit === 'number'
-      ? quote.profit
-      : (Number(quote.total) || 0) - quote.totalCost;
-    return { totalCost: quote.totalCost, profit };
+    // Ventas guardadas entre SW v90–v92 no incluían BASE_COST $1000 — corregir en tiempo de lectura
+    const stored = quote.baseCostIncluded ? quote.totalCost : quote.totalCost + 1000;
+    const profit = (Number(quote.total) || 0) - stored;
+    return { totalCost: stored, profit };
   }
   // Fallback para ventas muy antiguas sin totalCost guardado
   const BASE_COST = 1000;
@@ -4277,7 +4277,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0, isGift: !!l.isGift };
       }),
       tier: totals.tier, total: savedTotal, totalWeight: totals.totalWeight,
-      pago, kilero, kileroSpecial, costsSnap, totalCost, profit,
+      pago, kilero, kileroSpecial, costsSnap, totalCost, profit, baseCostIncluded: true,
     };
     try {
       // Limpiar undefined antes de guardar en Firestore
