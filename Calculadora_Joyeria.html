@@ -3092,53 +3092,61 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
       {liquidacion.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Liquidación <em>de pagos</em></h3><span className="eyebrow">{activeLabel}</span></div>
-          {/* column headers */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'0 8px',padding:'4px 16px 6px',borderBottom:'1px solid var(--line)'}}>
-            {[['Persona','left'],['Pagos recibidos','right'],['Comisiones','right'],['Balance','right']].map(([lbl,align])=>(
-              <span key={lbl} style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.08em',textTransform:'uppercase',color:'var(--ink-mute)',textAlign:align,whiteSpace:'nowrap'}}>{lbl}</span>
-            ))}
-          </div>
-          {/* person rows */}
-          <div style={{padding:'6px 10px 4px'}}>
+          {/* tabla con columnas fijas y separadores verticales */}
+          <div style={{overflowX:'auto'}}>
+            {/* header row */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 100px 100px 104px',minWidth:380,borderBottom:'2px solid var(--line)'}}>
+              {[
+                {lbl:'Persona',    align:'left',  pl:54},
+                {lbl:'Pagos rec.', align:'right', pl:0},
+                {lbl:'Comisiones', align:'right', pl:0},
+                {lbl:'Balance',    align:'right', pl:0},
+              ].map(({lbl,align,pl},i)=>(
+                <div key={lbl} style={{padding:'7px 10px',paddingLeft:pl||10,textAlign:align,borderLeft:i>0?'1px solid var(--line)':'none'}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)'}}>{lbl}</span>
+                </div>
+              ))}
+            </div>
+            {/* person rows */}
             {liquidacion.rows.map(r=>{
               const c=r.isEmpresa?'#a0a0a0':personColor(r.name);
               const balPos=r.balance>0;
               const balNeg=r.balance<0;
               const balColor=balPos?'#4ade80':balNeg?'var(--danger)':'var(--ink-mute)';
-              const balBg=balPos?'rgba(74,222,128,.12)':balNeg?'rgba(239,68,68,.12)':'transparent';
-              const initials=r.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+              const balBg=balPos?'rgba(74,222,128,.13)':balNeg?'rgba(239,68,68,.13)':'transparent';
+              const ini=r.name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
               return(
-              <div key={r.name} style={{display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:'0 8px',alignItems:'center',padding:'8px 6px',borderRadius:10,marginBottom:4,background:'var(--bg-2)'}}>
-                {/* avatar + name */}
-                <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
-                  <div style={{width:34,height:34,borderRadius:'50%',background:`${c}22`,border:`2px solid ${c}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <span style={{fontFamily:'var(--mono)',fontSize:11,fontWeight:800,color:c}}>{initials}</span>
+              <div key={r.name} style={{display:'grid',gridTemplateColumns:'1fr 100px 100px 104px',minWidth:380,borderBottom:'1px solid var(--line)',alignItems:'stretch'}}>
+                {/* col persona */}
+                <div style={{display:'flex',alignItems:'center',gap:9,padding:'9px 10px 9px 10px',minWidth:0}}>
+                  <div style={{width:32,height:32,borderRadius:'50%',background:`${c}20`,border:`2px solid ${c}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <span style={{fontFamily:'var(--mono)',fontSize:11,fontWeight:800,color:c}}>{ini}</span>
                   </div>
                   <div style={{minWidth:0}}>
                     <div style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:c,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.name}</div>
                     {r.isEmpresa&&(
-                      <div style={{display:'flex',gap:4,marginTop:2,flexWrap:'wrap'}}>
-                        <span style={{fontFamily:'var(--mono)',fontSize:9,background:'rgba(160,160,160,.15)',color:'#a0a0a0',borderRadius:4,padding:'1px 5px',whiteSpace:'nowrap'}}>30% com. ${fmtCLP(Math.round(r.empresaComision))}</span>
-                        <span style={{fontFamily:'var(--mono)',fontSize:9,background:'rgba(251,191,36,.1)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',whiteSpace:'nowrap'}}>costos ${fmtCLP(Math.round(r.empresaCostos))}</span>
+                      <div style={{display:'flex',gap:3,marginTop:2,flexWrap:'wrap'}}>
+                        <span style={{fontFamily:'var(--mono)',fontSize:8,background:'rgba(160,160,160,.15)',color:'#a0a0a0',borderRadius:3,padding:'1px 4px',whiteSpace:'nowrap'}}>30% ${fmtCLP(Math.round(r.empresaComision))}</span>
+                        <span style={{fontFamily:'var(--mono)',fontSize:8,background:'rgba(251,191,36,.1)',color:'var(--gold-2)',borderRadius:3,padding:'1px 4px',whiteSpace:'nowrap'}}>costos ${fmtCLP(Math.round(r.empresaCostos))}</span>
                       </div>
                     )}
                   </div>
                 </div>
-                {/* pagos recibidos */}
-                <div style={{textAlign:'right',whiteSpace:'nowrap'}}>
+                {/* col pagos recibidos */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'9px 10px',borderLeft:'1px solid var(--line)'}}>
                   <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--ink-dim)',fontWeight:500}}>
                     {r.pagosRecibidos>0?`$${fmtCLP(Math.round(r.pagosRecibidos))}`:'—'}
                   </span>
                 </div>
-                {/* comisiones */}
-                <div style={{textAlign:'right',whiteSpace:'nowrap'}}>
+                {/* col comisiones */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'9px 10px',borderLeft:'1px solid var(--line)'}}>
                   <span style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--ink-dim)',fontWeight:500}}>
                     {r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}
                   </span>
                 </div>
-                {/* balance badge */}
-                <div style={{textAlign:'right',whiteSpace:'nowrap'}}>
-                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:800,color:balColor,background:balBg,borderRadius:6,padding:'3px 7px',display:'inline-block'}}>
+                {/* col balance */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',padding:'9px 8px',borderLeft:'1px solid var(--line)',background:balBg}}>
+                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:800,color:balColor}}>
                     {r.balance===0?'$0':`${balPos?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
                   </span>
                 </div>
@@ -3151,14 +3159,14 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
             const cuadra=Math.abs(liquidacion.totalBalance)<1;
             const pagosOk=Math.abs(liquidacion.totalPagos-summary.totalVentas)<1;
             return(
-            <div style={{margin:'0 10px 10px',borderRadius:10,background:'var(--bg-2)',border:`1px solid ${cuadra&&pagosOk?'rgba(74,222,128,.3)':'rgba(239,68,68,.3)'}`,overflow:'hidden'}}>
+            <div style={{margin:'10px 10px 10px',borderRadius:10,background:'var(--bg-2)',border:`1px solid ${cuadra&&pagosOk?'rgba(74,222,128,.3)':'rgba(239,68,68,.3)'}`,overflow:'hidden'}}>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',borderBottom:'1px solid var(--line)'}}>
                 {[
                   {label:'Total pagos',val:`$${fmtCLP(Math.round(liquidacion.totalPagos))}`,ok:pagosOk},
                   {label:'Total ventas',val:`$${fmtCLP(Math.round(summary.totalVentas))}`,ok:pagosOk},
                   {label:'Balance neto',val:cuadra?'$0':`${liquidacion.totalBalance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(liquidacion.totalBalance)))}`,ok:cuadra},
-                ].map(({label,val,ok})=>(
-                  <div key={label} style={{padding:'8px 10px',textAlign:'center',borderRight:'1px solid var(--line)'}}>
+                ].map(({label,val,ok},i)=>(
+                  <div key={label} style={{padding:'8px 10px',textAlign:'center',borderRight:i<2?'1px solid var(--line)':'none'}}>
                     <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:3}}>{label}</div>
                     <div style={{fontFamily:'var(--mono)',fontSize:13,fontWeight:800,color:ok?'#4ade80':'var(--danger)'}}>{val}</div>
                   </div>
