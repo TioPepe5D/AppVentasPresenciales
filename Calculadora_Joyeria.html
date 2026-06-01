@@ -4224,7 +4224,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
     const validLines = lines.filter(isValidLine);
     if (validLines.length === 0) { showToast("Agrega al menos una línea"); return; }
     const costsSnap = {};
-    let totalCost = 0;
+    let totalCost = 1000; // BASE_COST: empaque/bolsas
     const kilero = kileroActive;
     for (const l of validLines) {
       if (l.category === INSUMO_KEY) {
