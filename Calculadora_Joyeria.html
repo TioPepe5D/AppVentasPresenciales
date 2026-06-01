@@ -2841,8 +2841,6 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
   },[periodQuotes,prices]);
 
   const liquidacion = useMemo(()=>{
-    // Empresa recibe todo lo que no es comisión del equipo (incluye su 30% + costos + absorbe pérdidas)
-    // Así los balances suman $0 siempre: sum(comision_i) + empresaRecibe = totalVentas = totalPagos
     const empresaRecibe = summary.totalVentas - summary.totalComisionEquipo;
     const allNames=new Set([...summary.rows.map(r=>r.name),...Object.keys(summary.pagosByPerson||{})]);
     const rows=[...allNames].map(name=>{
@@ -2850,7 +2848,11 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
       const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
       const efectivo=name===EMPRESA ? empresaRecibe : (row.comision||0);
       const balance=efectivo-pagosRecibidos;
-      return {name,comision:efectivo,pagosRecibidos,balance,isEmpresa:name===EMPRESA};
+      return {
+        name,comision:efectivo,pagosRecibidos,balance,isEmpresa:name===EMPRESA,
+        empresaComision: name===EMPRESA ? summary.totalEmpresa : null,
+        empresaCostos:   name===EMPRESA ? summary.totalCostos  : null,
+      };
     }).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance));
     const totalBalance=rows.reduce((s,r)=>s+r.balance,0);
     const totalPagos=rows.reduce((s,r)=>s+r.pagosRecibidos,0);
@@ -3108,7 +3110,14 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                   <tr key={r.name}>
                     <td style={td(false,true,c)}>{r.name}</td>
                     <td style={td(true,false)}>{r.pagosRecibidos>0?`$${fmtCLP(Math.round(r.pagosRecibidos))}`:'—'}</td>
-                    <td style={td(true,false)}>{r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}</td>
+                    <td style={td(true,false)}>
+                      {r.isEmpresa?(
+                        <div style={{lineHeight:1.6}}>
+                          <div>{`$${fmtCLP(Math.round(r.empresaComision))}`}<span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginLeft:4}}>30% com.</span></div>
+                          <div>{`$${fmtCLP(Math.round(r.empresaCostos))}`}<span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginLeft:4}}>costos</span></div>
+                        </div>
+                      ):r.comision>0?`$${fmtCLP(Math.round(r.comision))}`:'—'}
+                    </td>
                     <td style={td(true,true,balColor)}>
                       {r.balance===0?'—':`${r.balance>0?'+':'-'}$${fmtCLP(Math.abs(Math.round(r.balance)))}`}
                     </td>
