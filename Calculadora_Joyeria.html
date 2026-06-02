@@ -3336,32 +3336,15 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
       {/* ── tabla comparativa por producto ── */}
       {productStats.length>0&&(()=>{
         const CAT_COLORS={cadena:'#c9a84c',micro:'#6ee7b7',italiana:'#f4a380',gf18k:'#fb923c',insumos:'#f472b6'};
-        const sorted=[...productStats].sort((a,b)=>sortCol==='name'?a.name.localeCompare(b.name):b[sortCol]-a[sortCol]);
+        const sorted=[...productStats].sort((a,b)=>b.revenue-a.revenue);
         const fmt$=v=>`$${fmtCLP(Math.round(v))}`;
         const totRev=productStats.reduce((s,d)=>s+d.revenue,0);
         const totCnt=productStats.reduce((s,d)=>s+d.count,0);
-        const sortCols=[
-          {key:'count',  label:'Ventas'},
-          {key:'grams',  label:'G/Uni'},
-          {key:'revenue',label:'Ingresos'},
-          {key:'pct',    label:'%'},
-        ];
         return(
         <div className="chart-card" style={{overflow:'hidden'}}>
-          {/* header con botones de ordenamiento */}
-          <div className="chart-head" style={{cursor:onGotoCharts?'pointer':undefined,flexWrap:'wrap',gap:8}} onClick={onGotoCharts}>
-            <div>
-              <h3>Tabla <em>comparativa</em></h3>
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-              {sortCols.map(c=>(
-                <button key={c.key} onClick={e=>{e.stopPropagation();setSortCol(c.key);}}
-                  style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',padding:'3px 8px',borderRadius:999,border:`1px solid ${sortCol===c.key?'var(--gold)':'var(--line)'}`,background:sortCol===c.key?'rgba(var(--accent-rgb),.1)':'transparent',color:sortCol===c.key?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}>
-                  {c.label}{sortCol===c.key?' ▼':''}
-                </button>
-              ))}
-              {onGotoCharts&&<span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>→ 📊</span>}
-            </div>
+          <div className="chart-head" style={{cursor:onGotoCharts?'pointer':undefined}} onClick={onGotoCharts}>
+            <h3>Tabla <em>comparativa</em></h3>
+            {onGotoCharts&&<span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>→ 📊</span>}
           </div>
           {/* product cards */}
           <div style={{padding:'8px 10px 4px',display:'flex',flexDirection:'column',gap:6}}>
