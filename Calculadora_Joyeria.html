@@ -2534,11 +2534,15 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                             );
                           }
                           const cs = CAT_CHIP_STYLE[l.category];
+                          const cat = prices[l.category];
+                          const pricePerG = cat ? (Number(l.customPrice) || cat.prices[h.tier] || 0) : 0;
+                          const sub = pricePerG * (Number(l.grams) || 0);
                           return (
                             <span key={i} className="q-chip" style={cs ? {color:cs.color} : {}}>
-                              <span className="q-chip-name">{(prices[l.category] && prices[l.category].name) || l.category}</span>
+                              <span className="q-chip-name">{(cat && cat.name) || l.category}</span>
                               <span className="q-chip-meta">
                                 <span className="q-grams">{roundG(l.grams)}g</span>
+                                {sub>0 && <span className="q-price">${fmtCLP(Math.round(sub))}</span>}
                               </span>
                             </span>
                           );
