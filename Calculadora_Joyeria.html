@@ -3082,6 +3082,75 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         );
       })()}
 
+      {/* ── mejor día / mejor hora de ventas ── */}
+      {salesPattern.topDow.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
+            {salesPattern.topDow.map((d,i)=>(
+              <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(d.total/salesPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {salesPattern.topSlot.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
+            {salesPattern.topSlot.map((s,i)=>(
+              <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(s.total/salesPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── análisis de regalos ── */}
+      {giftStats.count>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Análisis <em>de regalos</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>🎁 Ítems regalados</div>
+              <div style={{fontSize:20,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',marginBottom:3}}>{giftStats.count}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{giftStats.quotes} {giftStats.quotes===1?'venta':'ventas'} con regalo</div>
+            </div>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>💸 Valor regalado</div>
+              <div style={{fontSize:16,fontWeight:800,color:'var(--danger,#f87171)',fontFamily:'var(--mono)',marginBottom:3}}>${fmtCLP(giftStats.value)}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>precio de venta</div>
+            </div>
+          </div>
+          {(giftStats.joyeriaVal>0||giftStats.insumoVal>0)&&(
+            <div style={{padding:'0 16px 14px',display:'flex',flexDirection:'column',gap:6}}>
+              {giftStats.joyeriaVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>💍 Joyería</span>
+                  <span style={{color:'var(--gold-2)',fontWeight:700}}>${fmtCLP(giftStats.joyeriaVal)}</span>
+                </div>
+              )}
+              {giftStats.insumoVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>🔩 Insumos</span>
+                  <span style={{color:'#f472b6',fontWeight:700}}>${fmtCLP(giftStats.insumoVal)}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {liquidacion.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
           <div className="chart-head"><h3>Liquidación <em>de pagos</em></h3><span className="eyebrow">{activeLabel}</span></div>
@@ -3261,75 +3330,6 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* ── mejor día / mejor hora de ventas ── */}
-      {salesPattern.topDow.length>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'12px 16px 14px'}}>
-            {salesPattern.topDow.map((d,i)=>(
-              <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
-                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(d.total/salesPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
-                </div>
-                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {salesPattern.topSlot.length>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'12px 16px 14px'}}>
-            {salesPattern.topSlot.map((s,i)=>(
-              <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
-                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(s.total/salesPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
-                </div>
-                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── análisis de regalos ── */}
-      {giftStats.count>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Análisis <em>de regalos</em></h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
-              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>🎁 Ítems regalados</div>
-              <div style={{fontSize:20,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',marginBottom:3}}>{giftStats.count}</div>
-              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{giftStats.quotes} {giftStats.quotes===1?'venta':'ventas'} con regalo</div>
-            </div>
-            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
-              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>💸 Valor regalado</div>
-              <div style={{fontSize:16,fontWeight:800,color:'var(--danger,#f87171)',fontFamily:'var(--mono)',marginBottom:3}}>${fmtCLP(giftStats.value)}</div>
-              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>precio de venta</div>
-            </div>
-          </div>
-          {(giftStats.joyeriaVal>0||giftStats.insumoVal>0)&&(
-            <div style={{padding:'0 16px 14px',display:'flex',flexDirection:'column',gap:6}}>
-              {giftStats.joyeriaVal>0&&(
-                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
-                  <span style={{color:'var(--ink-dim)'}}>💍 Joyería</span>
-                  <span style={{color:'var(--gold-2)',fontWeight:700}}>${fmtCLP(giftStats.joyeriaVal)}</span>
-                </div>
-              )}
-              {giftStats.insumoVal>0&&(
-                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
-                  <span style={{color:'var(--ink-dim)'}}>🔩 Insumos</span>
-                  <span style={{color:'#f472b6',fontWeight:700}}>${fmtCLP(giftStats.insumoVal)}</span>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
