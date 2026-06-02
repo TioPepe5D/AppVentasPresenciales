@@ -2390,8 +2390,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
     return groups;
   }, [filtered]);
 
-  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',flex:1,minWidth:0,cursor:'pointer'};
-  const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'5px 12px',borderRadius:20,border:'1px solid var(--line)',background:active?'var(--accent)':'var(--panel)',color:active?'#fff':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s'});
+  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'8px 10px',borderRadius:10,border:'1px solid var(--line)',background:'var(--bg-2)',color:'var(--ink)',width:'100%',cursor:'pointer',appearance:'none',WebkitAppearance:'none',backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E")`,backgroundRepeat:'no-repeat',backgroundPosition:'right 10px center'};
+  const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:20,border:`1px solid ${active?'var(--gold)':'var(--line)'}`,background:active?'rgba(var(--accent-rgb),.18)':'transparent',color:active?'var(--gold-2)':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s,border-color .15s',flexShrink:0});
 
   return (
     <div className="fade-in">
@@ -2404,8 +2404,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
 
-      {/* ── chips de período estilo Reportes ── */}
-      <div style={{padding:'4px 14px 2px',display:'flex',gap:6,flexWrap:'wrap'}}>
+      {/* ── chips de período ── */}
+      <div style={{padding:'4px 14px 6px',display:'flex',gap:6,overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
         {[['','Todos'],['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
           <button key={k} style={chipStyle(period===k)} onClick={()=>{setPeriod(k);setNavIdx(0);}}>{lbl}</button>
         ))}
@@ -2422,34 +2422,48 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
       {/* ── selects ── */}
       {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0||true) && (
-        <div style={{padding:'6px 14px 8px',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+        <div style={{padding:'2px 14px 10px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           {uniqueNames.att.length>0 && (
-            <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
-              <option value="">Atendió: Todos</option>
-              {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Atendió</span>
+              <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
+                <option value="">Todos</option>
+                {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           )}
           {uniqueNames.sched.length>0 && (
-            <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
-              <option value="">Agendó: Todos</option>
-              {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Agendó</span>
+              <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
+                <option value="">Todos</option>
+                {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           )}
           {uniqueNames.pago.length>0 && (
-            <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
-              <option value="">Pago: Todos</option>
-              {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Pago</span>
+              <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
+                <option value="">Todos</option>
+                {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
           )}
-          <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
-            <option value="">Tipo: Todos</option>
-            <option value="kilo">📦 Por kilo</option>
-            <option value="individual">💍 Individual</option>
-          </select>
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Tipo</span>
+            <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
+              <option value="">Todos</option>
+              <option value="kilo">📦 Por kilo</option>
+              <option value="individual">💍 Individual</option>
+            </select>
+          </div>
           {(hasFilters||period) && (
-            <button onClick={clearAll}
-              style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
-            >✕ Limpiar</button>
+            <div style={{gridColumn:'1/-1',display:'flex',justifyContent:'flex-end'}}>
+              <button onClick={clearAll}
+                style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'6px 14px',borderRadius:20,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer'}}
+              >✕ Limpiar filtros</button>
+            </div>
           )}
         </div>
       )}
