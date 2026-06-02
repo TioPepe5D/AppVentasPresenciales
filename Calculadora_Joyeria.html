@@ -2164,6 +2164,40 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             );
           })}
         </div>
+
+        {/* ── Selector Normal / Kilero ── */}
+        <div style={{padding:'4px 16px 14px'}}>
+          <div style={{display:'flex',background:'var(--bg-2)',border:'1px solid var(--line)',borderRadius:12,padding:4,gap:4}}>
+            <button
+              onClick={()=>onKileroToggle(false)}
+              style={{flex:1,padding:'9px',borderRadius:9,border:'none',
+                background:!kileroActive?'var(--panel)':'transparent',
+                color:!kileroActive?'var(--ink)':'var(--ink-mute)',
+                fontFamily:'var(--mono)',fontSize:12,fontWeight:700,cursor:'pointer',
+                boxShadow:!kileroActive?'0 1px 4px rgba(0,0,0,.25)':'none',
+                transition:'all .15s'
+              }}>
+              Normal
+            </button>
+            <button
+              onClick={()=>onKileroToggle(true)}
+              style={{flex:1,padding:'9px',borderRadius:9,border:'none',
+                background:kileroActive?'rgba(201,168,76,.18)':'transparent',
+                color:kileroActive?'var(--gold-2)':'var(--ink-mute)',
+                fontFamily:'var(--mono)',fontSize:12,fontWeight:800,cursor:'pointer',
+                boxShadow:kileroActive?'0 1px 4px rgba(0,0,0,.25)':'none',
+                transition:'all .15s'
+              }}>
+              ⚖️ Kilero{kileroSpecial?' ⭐':''}
+            </button>
+          </div>
+          {kileroSpecial&&(
+            <div style={{marginTop:6,fontFamily:'var(--mono)',fontSize:10,color:'var(--gold-2)',textAlign:'center',letterSpacing:'.06em'}}>
+              ⭐ Venta especial autorizada
+            </div>
+          )}
+        </div>
+
         <div style={{padding:'0 16px 16px'}}>
           <button className="add-line" onClick={addLine}>
             <span className="plus">+</span> Añadir línea
@@ -2182,23 +2216,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             <div className="tier-body">
               <div className="eyebrow">Tramo aplicado</div>
               <div className="why"><strong>{TIER_RULES[totals.tier].desc}.</strong> {totals.reason}.</div>
-              <div style={{marginTop:10,display:'flex',flexDirection:'column',gap:6}}>
-                <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer',userSelect:'none'}}>
-                  <div onClick={()=>onKileroToggle(!kileroActive)} style={{width:38,height:22,borderRadius:11,background:kileroActive?'var(--gold-2)':'var(--line)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0}}>
-                    <div style={{position:'absolute',top:3,left:kileroActive?18:3,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
-                  </div>
-                  <span style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:kileroActive?'var(--gold-2)':'var(--ink-dim)'}}>
-                    {kileroActive ? (kileroSpecial ? '⭐ VENTA ESPECIAL KILERO' : '⚖️ PRECIO KILERO') : 'Precio kilero'}
-                  </span>
-                </label>
-                {kileroActive && (
-                  <div style={{display:'inline-flex',alignItems:'center',gap:4,background:kileroSpecial?'rgba(201,168,76,.08)':'rgba(var(--accent-rgb),.12)',border:`1px solid ${kileroSpecial?'rgba(201,168,76,.4)':'rgba(var(--accent-rgb),.35)'}`,borderRadius:6,padding:'3px 8px',fontSize:10,fontFamily:'var(--mono)',color:'var(--gold-2)',letterSpacing:'.08em'}}>
-                    {kileroSpecial ? '⭐ Venta especial autorizada · costKilero activo' : '◆ KILERO ACTIVO · costKilero activo'}
-                  </div>
-                )}
-                {kileroAuto && !kileroActive && (
-                  <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>Desactivado manualmente</div>
-                )}
+              <div style={{marginTop:6,display:'flex',gap:4,alignItems:'center'}}>
+                <span style={{fontFamily:'var(--mono)',fontSize:10,color:kileroActive?'var(--gold-2)':'var(--ink-mute)',fontWeight:700}}>
+                  {kileroActive?(kileroSpecial?'⭐ Kilero especial':'⚖️ Kilero'):'Normal'}
+                </span>
               </div>
             </div>
           </div>
