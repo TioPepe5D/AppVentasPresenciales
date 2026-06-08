@@ -240,26 +240,6 @@
   /* Summary */
   .summary{padding:14px 14px 18px}
   @media (min-width: 520px){ .summary{ padding:18px 18px 20px; } }
-  .tier{
-    display:flex;align-items:center;gap:12px;padding:12px 14px;
-    background: linear-gradient(180deg, rgba(var(--accent-rgb),.10), rgba(var(--accent-deep-rgb),.25));
-    border:1px solid rgba(var(--accent-bright-rgb),.24);
-    border-radius:10px;margin-bottom:14px;
-  }
-  .tier-badge{
-    width:44px;height:44px;border-radius:6px;
-    background: linear-gradient(160deg, var(--gold-2), var(--gold) 60%, var(--gold-deep));
-    color:var(--ink);display:grid;place-items:center;
-    font-weight:700;font-size:18px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
-    position:relative;flex-shrink:0;
-  }
-  .tier-badge::after{content:"";position:absolute;inset:3px;border:1px solid rgba(var(--highlight-rgb),.2);border-radius:4px}
-  .summary > .tier{display:none}
-  .tier-body{flex:1;min-width:0}
-  .tier-body .eyebrow{margin-bottom:2px}
-  .tier-body .why{font-size:13px;color:var(--ink-dim);line-height:1.4}
-  .tier-body .why strong{color:var(--ink);font-weight:600}
 
   .totals{display:grid;gap:10px}
   .totals > .row{display:none !important}
@@ -356,13 +336,10 @@
   .quote-name{font-size:18px;font-weight:700;letter-spacing:.005em;color:var(--ink)}
   .quote-name em{color:var(--ink-mute);font-weight:400;font-size:14px;font-style:italic}
   .quote-date{font-family:var(--mono);font-size:10px;color:var(--ink-mute);letter-spacing:.07em;white-space:nowrap}
-  .quote-lines{display:flex;flex-direction:column;margin-bottom:12px;border-radius:10px;border:1px solid var(--line);overflow:hidden;background:var(--bg-2)}
-  .q-chip{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--line);background:none;border-radius:0;font-size:13px;color:var(--ink-dim);gap:8;line-height:1.3}
-  .q-chip:last-child{border-bottom:none}
-  .q-chip-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .q-chip-meta{display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .quote-lines{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .q-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-dim);background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:5px 11px;line-height:1.3}
   .q-grams{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
-  .q-price{font-family:var(--mono);font-size:11px;color:var(--ink);font-weight:600}
+  .q-price{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
   .q-divider{height:1px;background:var(--line);margin:0 -16px 13px}
   .quote-staff{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
   .q-person{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px}
@@ -727,13 +704,13 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ---------- Data ----------
 const DEFAULT_PRICES = {
-  "collar_pulsera_mujer_925": { "name": "Collar y Pul Mujer 💁🏼‍♀️", "material": "SL 925", "cost": 450, "costKilero": 400, "prices": [1900, 950, 800, 650, 550] },
-  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "material": "SL 925", "cost": 450, "costKilero": 400, "prices": [1500, 750, 700, 500, 450] },
-  "aros_colgantes_925": { "name": "Aros y Colgantes ✨", "material": "SL 925", "cost": 650, "costKilero": 550, "prices": [3600, 1200, 1000, 900, 850] },
-  "anillos_925": { "name": "Anillos 💍", "material": "SL 925", "cost": 650, "costKilero": 550, "prices": [4500, 1500, 1250, 1100, 1000] },
-  "collar_pulsera_micro": { "name": "Collar y Pul Micro 💎", "material": "Micro", "cost": 650, "costKilero": 550, "prices": [2000, 1000, 900, 800, 750] },
-  "italiana_925": { "name": "Italiana 🇮🇹", "material": "925", "cost": 3000, "costKilero": 3000, "prices": [5500, 2750, 2500, 2250, 2000] },
-  "gf_18k": { "name": "GF 18 K ⚜️", "material": "GF 18K", "cost": 1600, "costKilero": 1500, "prices": [5000, 2500, 2250, 2000, 1800] }
+  "collar_pulsera_mujer_925":  { "name": "Collar y Pul Mujer 💁🏼‍♀️",  "material": "SL 925",  "cost": 450,  "costKilero": 405 },
+  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "material": "SL 925",  "cost": 450,  "costKilero": 405 },
+  "aros_colgantes_925":        { "name": "Aros y Colgantes ✨",        "material": "SL 925",  "cost": 650,  "costKilero": 550 },
+  "anillos_925":               { "name": "Anillos 💍",                 "material": "SL 925",  "cost": 650,  "costKilero": 550 },
+  "collar_pulsera_micro":      { "name": "Collar y Pul Micro 💎",      "material": "Micro",   "cost": 650,  "costKilero": 550 },
+  "italiana_925":              { "name": "Italiana 🇮🇹",               "material": "925",     "cost": 3000, "costKilero": 3000 },
+  "gf_18k":                    { "name": "GF 18 K ⚜️",                 "material": "GF 18K",  "cost": 1600, "costKilero": 1500 }
 };
 
 const CATEGORY_ORDER = Object.keys(DEFAULT_PRICES);
@@ -753,13 +730,6 @@ const LOTE_CAT_MAP = {
   gf18k:    'gf_18k',
 };
 
-const TIER_RULES = [
-  { label: "PU",  desc: "Precio unitario (pieza individual)" },
-  { label: "I",   desc: "Supera $30.000" },
-  { label: "II",  desc: "Supera $100.000" },
-  { label: "III", desc: "Supera 499g" },
-  { label: "IV",  desc: "Supera 999g" },
-];
 
 const LS_HISTORY   = "joya.history.v1";
 const LS_PRICES    = "joya.prices.v1";
@@ -1210,13 +1180,9 @@ const buildMessagePiezas = (validLines, prices) => {
   return lines.join('\n');
 };
 
-// Index map: 0=T-0 (≤$30k), 1=T-I (>$30k), 2=T-II (>$100k), 3=T-III (>499g), 4=T-IV (>999g)
-// El total final CON el descuento del tramo debe superar el umbral.
-// Si al aplicar T-II el total cae bajo $100k, se baja a T-I, etc.
 function computeTotals(lines, prices){
   const regular = lines.filter(l => l.category !== INSUMO_KEY && l.category !== LOTE_KEY);
   const regularWeight = regular.reduce((s,l) => s + (Number(l.grams)||0), 0);
-  // Sumar gramos de lotes (loteGramsMap para líneas en calculadora, l.grams para líneas guardadas)
   const loteWeight = lines.filter(l => l.category === LOTE_KEY).reduce((s,l) => {
     if (l.loteGramsMap && Object.keys(l.loteGramsMap).length > 0) {
       return s + Object.values(l.loteGramsMap).reduce((sum,v) => sum + (Number(v)||0), 0);
@@ -1224,47 +1190,18 @@ function computeTotals(lines, prices){
     return s + (Number(l.grams)||0);
   }, 0);
   const totalWeight = regularWeight + loteWeight;
-
-  const calcRegularTotal = (tierIdx) => regular.filter(l => !l.isGift).reduce((s,l) => {
-    const cat = prices[l.category];
-    if (!cat) return s;
-    const unitPrice = Number(l.customPrice) || 0;
-    return s + unitPrice * (Number(l.grams)||0);
+  const regularTotal = regular.filter(l => !l.isGift).reduce((s,l) => {
+    return s + (Number(l.customPrice)||0) * (Number(l.grams)||0);
   }, 0);
-
-  let tier;
-  // Peso tiene prioridad
-  if (totalWeight > 999) tier = 4;
-  else if (totalWeight > 499) tier = 3;
-  else {
-    // Tramos por precio: el total AL precio del tramo debe superar el umbral
-    const totalAtII = calcRegularTotal(2);
-    const totalAtI  = calcRegularTotal(1);
-
-    if (totalAtII > 100000) tier = 2;
-    else tier = 1;
-  }
-
-  const regularTotal = calcRegularTotal(tier);
   const insumoTotal = lines.filter(l => l.category === INSUMO_KEY && !l.isGift).reduce((s,l) => {
     const cost  = Number(l.insumoCost) || 0;
-    // Si insumoValor fue ingresado (incluso como 0 = regalo), respetarlo; si no, usar cost
     const valor = (l.insumoValor !== '' && l.insumoValor !== undefined && l.insumoValor !== null)
-      ? Number(l.insumoValor)
-      : cost;
-    const qty   = 1;
-    return s + valor * qty;
+      ? Number(l.insumoValor) : cost;
+    return s + valor;
   }, 0);
   const loteTotal = lines.filter(l => l.category === LOTE_KEY).reduce((s,l) => s + (Number(l.lotePrice)||0), 0);
   const total = regularTotal + insumoTotal + loteTotal;
-
-  let reason;
-  if (totalWeight > 999) reason = `Peso total ${fmtCLP(totalWeight)}g supera 999g`;
-  else if (totalWeight > 499) reason = `Peso total ${fmtCLP(totalWeight)}g supera 499g`;
-  else if (tier === 2) reason = `Venta supera $100.000`;
-  else reason = `Precio T-I`;
-
-  return { tier, total, totalWeight, reason };
+  return { total, totalWeight };
 }
 
 /* ═══════════════════════════════════════
@@ -1273,13 +1210,6 @@ function computeTotals(lines, prices){
 ═══════════════════════════════════════ */
 
 // ---------- Lógica de negocio ----------
-// Kilero se activa automáticamente en tramos basados en peso (T-III desde 500g).
-const isKileroTier = (tier) => tier >= 3;
-const effectiveCost = (cat, tier) => {
-  if (!cat) return 0;
-  const n = isKileroTier(tier) ? Number(cat.costKilero) : Number(cat.cost);
-  return isFinite(n) ? n : (Number(cat.cost) || 0);
-};
 const meetsKileroConditions = (total, totalWeight) => total > 250000 || totalWeight > 500;
 const costFor = (cat, kilero) => {
   if (!cat) return 0;
@@ -1692,13 +1622,13 @@ function SalesList({ quotes, prices }){
                       );
                     }
                     const cat = prices[l.category];
-                    const price = cat ? cat.prices[q.tier] : 0;
+                    const price = Number(l.customPrice) || 0;
                     const sub = price * (Number(l.grams) || 0);
                     return (
                       <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'4px 0',fontSize:13,color:'var(--ink-dim)',gap:8}}>
                         <span style={{flex:1,minWidth:0}}>{cat ? cat.name : l.category}</span>
                         <span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--ink-mute)',whiteSpace:'nowrap'}}>
-                          {l.grams}g × ${fmtCLP(price)}
+                          {l.grams}g{price>0?` × $${fmtCLP(price)}`:''}
                         </span>
                         <span style={{fontFamily:'var(--mono)',fontWeight:600,color:'var(--ink)',whiteSpace:'nowrap'}}>
                           ${fmtCLP(sub)}
@@ -1788,7 +1718,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
     }
 
     return { grams, insumos, totalCost, profit: (Number(totals.total) || 0) - totalCost };
-  }, [lines, prices, totals.tier, totals.total, kileroActive]);
+  }, [lines, prices, totals.total, kileroActive]);
   return (
     <div className="fade-in">
       <div className="card">
@@ -1843,8 +1773,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             const isLote   = line.category === LOTE_KEY;
             const isGift   = !!line.isGift && !isLote;
             const cat = (!isInsumo && !isLote) ? prices[line.category] : null;
-            const tierPrice = cat ? cat.prices[totals.tier] : 0;
-            const price = (!isInsumo && !isLote) ? (Number(line.customPrice) || 0) : tierPrice;
+            const price = Number(line.customPrice) || 0;
             const g = Number(line.grams) || 0;
             const insumoCostVal  = Number(line.insumoCost)  || Number(line.insumoPrice) || 0;
             const insumoValorVal = Number(line.insumoValor) || insumoCostVal;
@@ -2065,58 +1994,20 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   </div>
                 )}
                 {!isInsumo && !isLote && !isGift && (
-                  <div className="legacy-price-table" style={{gridColumn:'1 / -1',marginTop:2}}>
-                    <button
-                      onClick={() => setOpenPickerId(openPickerId === line.id ? null : line.id)}
-                      style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 12px',background:'var(--surface-2,rgba(255,255,255,.05))',border:'1px solid var(--line)',borderRadius:8,color:'var(--ink)',fontSize:12,fontFamily:'var(--mono)',cursor:'pointer',transition:'border-color .15s'}}
-                    >
-                      <span style={{color:'var(--ink-mute)'}}>Tabla de precios</span>
-                      <span style={{display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{color: line.customPrice ? 'var(--gold-2)' : 'var(--ink)', fontWeight:600}}>
-                          {line.customPrice ? `$${fmtCLP(Number(line.customPrice))}/g · PERSONALIZADO` : `$${fmtCLP(tierPrice)}/g · Auto T-${TIER_RULES[totals.tier].label}`}
-                        </span>
-                        <span style={{color:'var(--ink-mute)',fontSize:10,transform: openPickerId===line.id ? 'rotate(180deg)' : 'none',transition:'transform .2s'}}>▼</span>
-                      </span>
-                    </button>
-                    {openPickerId === line.id && (
-                      <div className="fade-in" style={{marginTop:4,border:'1px solid var(--line)',borderRadius:8,overflow:'hidden'}}>
-                        {cat && cat.prices.map((p, i) => {
-                          if (i === 0) return null;
-                          const isActive = line.customPrice ? Number(line.customPrice) === p : i === totals.tier;
-                          return (
-                            <button key={i} onClick={() => {
-                              updateLine(line.id, { customPrice: i === totals.tier ? '' : String(p) });
-                              setOpenPickerId(null);
-                            }} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 14px',background: isActive ? 'rgba(var(--accent-rgb),.15)' : 'transparent',border:'none',borderBottom:'1px solid var(--line)',color: isActive ? 'var(--gold-2)' : 'var(--ink)',cursor:'pointer',fontSize:13,fontFamily:'var(--mono)'}}>
-                              <span style={{color:'var(--ink-mute)',fontSize:11}}>T-{TIER_RULES[i].label}</span>
-                              <span style={{fontWeight: isActive ? 700 : 400}}>${fmtCLP(p)}<span style={{fontSize:10,color:'var(--ink-mute)'}}>/g</span></span>
-                            </button>
-                          );
-                        })}
-                        <div style={{padding:'8px 14px',borderTop:'none',background:'transparent'}}>
-                          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom: line.customPrice && !cat.prices.includes(Number(line.customPrice)) ? 6 : 0}}>
-                            <span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--gold-2)',letterSpacing:'.08em',fontWeight:600}}>PERSONALIZADO</span>
-                          </div>
-                          <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
-                            <span style={{color:'var(--ink-mute)',fontFamily:'var(--mono)',fontSize:13}}>$</span>
-                            <input
-                              type="number"
-                              inputMode="numeric"
-                              min="0"
-                              value={line.customPrice && !cat.prices.map(String).includes(String(line.customPrice)) ? line.customPrice : ''}
-                              onChange={e => updateLine(line.id, { customPrice: e.target.value })}
-                              placeholder="Ingresar precio/g"
-                              style={{flex:1,background:'var(--surface-2,rgba(255,255,255,.06))',border:'1px solid var(--line)',borderRadius:6,padding:'6px 10px',color:'var(--ink)',fontFamily:'var(--mono)',fontSize:13}}
-                            />
-                            <span style={{color:'var(--ink-mute)',fontSize:11,fontFamily:'var(--mono)'}}>CLP/g</span>
-                            {line.customPrice && (
-                              <button onClick={() => { updateLine(line.id, { customPrice: '' }); setOpenPickerId(null); }}
-                                style={{padding:'4px 8px',background:'transparent',border:'1px solid var(--line)',borderRadius:6,color:'var(--ink-mute)',fontSize:11,cursor:'pointer'}}>Auto</button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <div style={{gridColumn:'1 / -1',marginTop:2}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0'}}>
+                      <span style={{color:'var(--ink-mute)',fontFamily:'var(--mono)',fontSize:13}}>$</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={line.customPrice || ''}
+                        onChange={e => updateLine(line.id, { customPrice: e.target.value })}
+                        placeholder="Precio por gramo"
+                        style={{flex:1,background:'var(--surface-2,rgba(255,255,255,.06))',border:'1px solid var(--line)',borderRadius:8,padding:'8px 12px',color:'var(--ink)',fontFamily:'var(--mono)',fontSize:13}}
+                      />
+                      <span style={{color:'var(--ink-mute)',fontSize:12,fontFamily:'var(--mono)',flexShrink:0}}>CLP/g</span>
+                    </div>
                   </div>
                 )}
                 <div className="line-meta">
@@ -2154,7 +2045,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                   ) : (
                     <>
                       <span className="price-tag">
-                        {`$${fmtCLP(price)}/g · precio a cobrar`}
+                        {price>0 ? `$${fmtCLP(price)}/g` : 'Sin precio'}
                       </span>
                       <span className="subtotal">${fmtCLP(sub)}</span>
                     </>
@@ -2164,40 +2055,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             );
           })}
         </div>
-
-        {/* ── Selector Normal / Kilero ── */}
-        <div style={{padding:'4px 16px 14px'}}>
-          <div style={{display:'flex',background:'var(--bg-2)',border:'1px solid var(--line)',borderRadius:12,padding:4,gap:4}}>
-            <button
-              onClick={()=>onKileroToggle(false)}
-              style={{flex:1,padding:'9px',borderRadius:9,border:'none',
-                background:!kileroActive?'var(--panel)':'transparent',
-                color:!kileroActive?'var(--ink)':'var(--ink-mute)',
-                fontFamily:'var(--mono)',fontSize:12,fontWeight:700,cursor:'pointer',
-                boxShadow:!kileroActive?'0 1px 4px rgba(0,0,0,.25)':'none',
-                transition:'all .15s'
-              }}>
-              Normal
-            </button>
-            <button
-              onClick={()=>onKileroToggle(true)}
-              style={{flex:1,padding:'9px',borderRadius:9,border:'none',
-                background:kileroActive?'rgba(201,168,76,.18)':'transparent',
-                color:kileroActive?'var(--gold-2)':'var(--ink-mute)',
-                fontFamily:'var(--mono)',fontSize:12,fontWeight:800,cursor:'pointer',
-                boxShadow:kileroActive?'0 1px 4px rgba(0,0,0,.25)':'none',
-                transition:'all .15s'
-              }}>
-              ⚖️ Kilero{kileroSpecial?' ⭐':''}
-            </button>
-          </div>
-          {kileroSpecial&&(
-            <div style={{marginTop:6,fontFamily:'var(--mono)',fontSize:10,color:'var(--gold-2)',textAlign:'center',letterSpacing:'.06em'}}>
-              ⭐ Venta especial autorizada
-            </div>
-          )}
-        </div>
-
         <div style={{padding:'0 16px 16px'}}>
           <button className="add-line" onClick={addLine}>
             <span className="plus">+</span> Añadir línea
@@ -2211,18 +2068,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
           <span className="eyebrow">Cálculo automático</span>
         </div>
         <div className="summary">
-          <div className="tier">
-            <div className="tier-badge">{TIER_RULES[totals.tier].label}</div>
-            <div className="tier-body">
-              <div className="eyebrow">Tramo aplicado</div>
-              <div className="why"><strong>{TIER_RULES[totals.tier].desc}.</strong> {totals.reason}.</div>
-              <div style={{marginTop:6,display:'flex',gap:4,alignItems:'center'}}>
-                <span style={{fontFamily:'var(--mono)',fontSize:10,color:kileroActive?'var(--gold-2)':'var(--ink-mute)',fontWeight:700}}>
-                  {kileroActive?(kileroSpecial?'⭐ Kilero especial':'⚖️ Kilero'):'Normal'}
-                </span>
-              </div>
-            </div>
-          </div>
           <div className="totals">
             <div className="row">
               <span className="k">Peso total</span>
@@ -2414,8 +2259,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
     return groups;
   }, [filtered]);
 
-  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'8px 10px',borderRadius:10,border:'1px solid var(--line)',background:'var(--bg-2)',color:'var(--ink)',width:'100%',cursor:'pointer',appearance:'none',WebkitAppearance:'none',backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E")`,backgroundRepeat:'no-repeat',backgroundPosition:'right 10px center'};
-  const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'6px 14px',borderRadius:20,border:`1px solid ${active?'var(--gold)':'var(--line)'}`,background:active?'rgba(var(--accent-rgb),.18)':'transparent',color:active?'var(--gold-2)':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s,border-color .15s',flexShrink:0});
+  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',flex:1,minWidth:0,cursor:'pointer'};
+  const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'5px 12px',borderRadius:20,border:'1px solid var(--line)',background:active?'var(--accent)':'var(--panel)',color:active?'#fff':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s'});
 
   return (
     <div className="fade-in">
@@ -2428,8 +2273,8 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
 
-      {/* ── chips de período ── */}
-      <div style={{padding:'4px 14px 6px',display:'flex',gap:6,overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+      {/* ── chips de período estilo Reportes ── */}
+      <div style={{padding:'4px 14px 2px',display:'flex',gap:6,flexWrap:'wrap'}}>
         {[['','Todos'],['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
           <button key={k} style={chipStyle(period===k)} onClick={()=>{setPeriod(k);setNavIdx(0);}}>{lbl}</button>
         ))}
@@ -2446,48 +2291,34 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
       {/* ── selects ── */}
       {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0||true) && (
-        <div style={{padding:'2px 14px 10px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <div style={{padding:'6px 14px 8px',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
           {uniqueNames.att.length>0 && (
-            <div style={{display:'flex',flexDirection:'column',gap:3}}>
-              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Atendió</span>
-              <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
-                <option value="">Todos</option>
-                {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
+            <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
+              <option value="">Atendió: Todos</option>
+              {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
           )}
           {uniqueNames.sched.length>0 && (
-            <div style={{display:'flex',flexDirection:'column',gap:3}}>
-              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Agendó</span>
-              <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
-                <option value="">Todos</option>
-                {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
+            <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
+              <option value="">Agendó: Todos</option>
+              {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
+            </select>
           )}
           {uniqueNames.pago.length>0 && (
-            <div style={{display:'flex',flexDirection:'column',gap:3}}>
-              <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Pago</span>
-              <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
-                <option value="">Todos</option>
-                {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
-              </select>
-            </div>
-          )}
-          <div style={{display:'flex',flexDirection:'column',gap:3}}>
-            <span style={{fontFamily:'var(--mono)',fontSize:9,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink-mute)',paddingLeft:2}}>Tipo</span>
-            <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
-              <option value="">Todos</option>
-              <option value="kilo">📦 Por kilo</option>
-              <option value="individual">💍 Individual</option>
+            <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
+              <option value="">Pago: Todos</option>
+              {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
             </select>
-          </div>
+          )}
+          <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
+            <option value="">Tipo: Todos</option>
+            <option value="kilo">📦 Por kilo</option>
+            <option value="individual">💍 Individual</option>
+          </select>
           {(hasFilters||period) && (
-            <div style={{gridColumn:'1/-1',display:'flex',justifyContent:'flex-end'}}>
-              <button onClick={clearAll}
-                style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'6px 14px',borderRadius:20,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer'}}
-              >✕ Limpiar filtros</button>
-            </div>
+            <button onClick={clearAll}
+              style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
+            >✕ Limpiar</button>
           )}
         </div>
       )}
@@ -2527,44 +2358,33 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
 
                       <div className="quote-lines">
                         {h.lines.map((l, i) => {
-                          const roundG = g => { const n=Math.round(Number(g)*10)/10; return n%1===0?n.toFixed(0):n.toFixed(1); };
                           if (l.category === INSUMO_KEY) {
                             const esRegalo = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) === 0 : (l.insumoPrice || 0) === 0;
                             const displayVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) * (Number(l.insumoQty)||1) : (l.insumoPrice || 0);
                             return (
                               <span key={i} className="q-chip">
-                                <span className="q-chip-name">{l.insumoName || 'Insumo'} 💎</span>
-                                <span className="q-chip-meta">
-                                  {esRegalo
-                                    ? <span style={{fontFamily:'var(--mono)',fontSize:9,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',letterSpacing:'.06em'}}>🎁 REGALO</span>
-                                    : <span className="q-price">${fmtCLP(displayVal)}</span>
-                                  }
-                                </span>
+                                {l.insumoName || 'Insumo'} 💎
+                                {esRegalo
+                                  ? <span style={{fontFamily:'var(--mono)',fontSize:10,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',letterSpacing:'.06em'}}>🎁 REGALO</span>
+                                  : <span className="q-price">${fmtCLP(displayVal)}</span>
+                                }
                               </span>
                             );
                           }
                           if (l.category === LOTE_KEY) {
                             return (
                               <span key={i} className="q-chip">
-                                <span className="q-chip-name">📦 {l.loteName || 'Lote'}</span>
-                                <span className="q-chip-meta">
-                                  {l.grams ? <span className="q-grams">{roundG(l.grams)}g</span> : null}
-                                  <span className="q-price">${fmtCLP(l.lotePrice || 0)}</span>
-                                </span>
+                                📦 {l.loteName || 'Lote'}
+                                {l.grams ? <span className="q-grams">{l.grams}g</span> : null}
+                                <span className="q-price">${fmtCLP(l.lotePrice || 0)}</span>
                               </span>
                             );
                           }
                           const cs = CAT_CHIP_STYLE[l.category];
-                          const cat = prices[l.category];
-                          const pricePerG = cat ? (Number(l.customPrice) || cat.prices[h.tier] || 0) : 0;
-                          const sub = pricePerG * (Number(l.grams) || 0);
                           return (
-                            <span key={i} className="q-chip" style={cs ? {color:cs.color} : {}}>
-                              <span className="q-chip-name">{(cat && cat.name) || l.category}</span>
-                              <span className="q-chip-meta">
-                                <span className="q-grams">{roundG(l.grams)}g</span>
-                                {sub>0 && <span className="q-price">${fmtCLP(Math.round(sub))}</span>}
-                              </span>
+                            <span key={i} className="q-chip" style={cs||{}}>
+                              {(prices[l.category] && prices[l.category].name) || l.category}
+                              <span className="q-grams">{l.grams}g</span>
                             </span>
                           );
                         })}
@@ -2819,7 +2639,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         } else {
           const grp=CAT_TO_GROUP[l.category]; if(!grp) continue;
           const g=Number(l.grams)||0; if(!g) continue;
-          const price=(prices[l.category]?.prices[q.tier])||0;
+          const price=(Number(l.customPrice)||0);
           G[grp].grams+=g; G[grp].revenue+=g*price; seen.add(grp);
         }
       }
@@ -2849,7 +2669,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
           const qty=Number(l.insumoQty)||1;
           insumoVal+=val*qty; value+=val*qty;
         } else {
-          const price=prices[l.category]?.prices[q.tier]||0;
+          const price=(Number(l.customPrice)||0);
           const v=price*(Number(l.grams)||0);
           joyeriaVal+=v; value+=v;
         }
@@ -3031,7 +2851,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
     for(const q of periodQuotes){
       for(const l of(q.lines||[])){
         const grp=catToGroup[l.category]; if(!grp) continue;
-        const price=(prices[l.category]?.prices[q.tier])||0;
+        const price=(Number(l.customPrice)||0);
         revenueByGroup[grp]+=(Number(l.grams)||0)*price;
       }
     }
@@ -3130,75 +2950,6 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         </div>
         );
       })()}
-
-      {/* ── mejor día / mejor hora de ventas ── */}
-      {salesPattern.topDow.length>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'12px 16px 14px'}}>
-            {salesPattern.topDow.map((d,i)=>(
-              <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
-                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(d.total/salesPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
-                </div>
-                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {salesPattern.topSlot.length>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'12px 16px 14px'}}>
-            {salesPattern.topSlot.map((s,i)=>(
-              <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
-                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${Math.round(s.total/salesPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
-                </div>
-                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── análisis de regalos ── */}
-      {giftStats.count>0&&(
-        <div className="chart-card" style={{marginBottom:8}}>
-          <div className="chart-head"><h3>Análisis <em>de regalos</em></h3><span className="eyebrow">{activeLabel}</span></div>
-          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
-              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>🎁 Ítems regalados</div>
-              <div style={{fontSize:20,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',marginBottom:3}}>{giftStats.count}</div>
-              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{giftStats.quotes} {giftStats.quotes===1?'venta':'ventas'} con regalo</div>
-            </div>
-            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
-              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>💸 Valor regalado</div>
-              <div style={{fontSize:16,fontWeight:800,color:'var(--danger,#f87171)',fontFamily:'var(--mono)',marginBottom:3}}>${fmtCLP(giftStats.value)}</div>
-              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>precio de venta</div>
-            </div>
-          </div>
-          {(giftStats.joyeriaVal>0||giftStats.insumoVal>0)&&(
-            <div style={{padding:'0 16px 14px',display:'flex',flexDirection:'column',gap:6}}>
-              {giftStats.joyeriaVal>0&&(
-                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
-                  <span style={{color:'var(--ink-dim)'}}>💍 Joyería</span>
-                  <span style={{color:'var(--gold-2)',fontWeight:700}}>${fmtCLP(giftStats.joyeriaVal)}</span>
-                </div>
-              )}
-              {giftStats.insumoVal>0&&(
-                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
-                  <span style={{color:'var(--ink-dim)'}}>🔩 Insumos</span>
-                  <span style={{color:'#f472b6',fontWeight:700}}>${fmtCLP(giftStats.insumoVal)}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {liquidacion.rows.length>0&&(
         <div className="chart-card" style={{marginBottom:8}}>
@@ -3382,6 +3133,75 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         </div>
       )}
 
+      {/* ── mejor día / mejor hora de ventas ── */}
+      {salesPattern.topDow.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor <em>día</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
+            {salesPattern.topDow.map((d,i)=>(
+              <div key={d.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:28,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{d.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(d.total/salesPattern.maxDow*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{d.count} {d.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {salesPattern.topSlot.length>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Mejor <em>hora</em> de ventas</h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'12px 16px 14px'}}>
+            {salesPattern.topSlot.map((s,i)=>(
+              <div key={s.label} style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                <div style={{width:36,fontFamily:'var(--mono)',fontSize:11,fontWeight:700,color:i===0?'var(--gold-2)':'var(--ink-dim)',flexShrink:0}}>{s.label}</div>
+                <div style={{flex:1,height:6,borderRadius:3,background:'var(--line)',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.round(s.total/salesPattern.maxSlot*100)}%`,background:i===0?'var(--gold-2)':'rgba(255,255,255,.15)',borderRadius:3,transition:'width .4s'}}/>
+                </div>
+                <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',flexShrink:0,textAlign:'right',minWidth:52}}>{s.count} {s.count===1?'venta':'ventas'}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── análisis de regalos ── */}
+      {giftStats.count>0&&(
+        <div className="chart-card" style={{marginBottom:8}}>
+          <div className="chart-head"><h3>Análisis <em>de regalos</em></h3><span className="eyebrow">{activeLabel}</span></div>
+          <div style={{padding:'8px 12px 12px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>🎁 Ítems regalados</div>
+              <div style={{fontSize:20,fontWeight:800,color:'var(--gold-2)',fontFamily:'var(--mono)',marginBottom:3}}>{giftStats.count}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>{giftStats.quotes} {giftStats.quotes===1?'venta':'ventas'} con regalo</div>
+            </div>
+            <div style={{background:'var(--bg-2)',borderRadius:12,padding:'11px 13px',border:'1px solid var(--line)'}}>
+              <div style={{fontSize:9,fontFamily:'var(--mono)',letterSpacing:'.12em',textTransform:'uppercase',color:'var(--ink-mute)',marginBottom:5}}>💸 Valor regalado</div>
+              <div style={{fontSize:16,fontWeight:800,color:'var(--danger,#f87171)',fontFamily:'var(--mono)',marginBottom:3}}>${fmtCLP(giftStats.value)}</div>
+              <div style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--ink-mute)'}}>precio de venta</div>
+            </div>
+          </div>
+          {(giftStats.joyeriaVal>0||giftStats.insumoVal>0)&&(
+            <div style={{padding:'0 16px 14px',display:'flex',flexDirection:'column',gap:6}}>
+              {giftStats.joyeriaVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>💍 Joyería</span>
+                  <span style={{color:'var(--gold-2)',fontWeight:700}}>${fmtCLP(giftStats.joyeriaVal)}</span>
+                </div>
+              )}
+              {giftStats.insumoVal>0&&(
+                <div style={{display:'flex',justifyContent:'space-between',fontFamily:'var(--mono)',fontSize:12,padding:'6px 10px',background:'var(--bg-2)',borderRadius:8,border:'1px solid var(--line)'}}>
+                  <span style={{color:'var(--ink-dim)'}}>🔩 Insumos</span>
+                  <span style={{color:'#f472b6',fontWeight:700}}>${fmtCLP(giftStats.insumoVal)}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── tabla comparativa por producto ── */}
       {productStats.length>0&&(()=>{
         const CAT_COLORS={cadena:'#c9a84c',micro:'#6ee7b7',italiana:'#f4a380',gf18k:'#fb923c',insumos:'#f472b6'};
@@ -3495,12 +3315,12 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
 ═══════════════════════════════════════ */
 
 // ---------- Prices Tab ----------
-function PricesTab({ prices, activeTier }){
+function PricesTab({ prices }){
   return (
     <div className="fade-in">
       <div className="card">
         <div className="card-head">
-          <h2>Tabla de <em>precios</em></h2>
+          <h2>Costos <em>internos</em></h2>
         </div>
         <div className="ptable">
           {CATEGORY_ORDER.map(key => {
@@ -3511,17 +3331,8 @@ function PricesTab({ prices, activeTier }){
                   <span>{cat.name}</span>
                   <span className="mat">{cat.material}</span>
                 </div>
-                <div className="ptable-grid">
-                  {cat.prices.map((p, i) => (
-                    <div className={"ptable-cell" + (i === activeTier ? ' active' : '')} key={i}>
-                      <div className="t">T{TIER_RULES[i].label}</div>
-                      <div className="p">{`$${fmtCLP(p)}`}</div>
-                      <span className="unit">CLP / g</span>
-                    </div>
-                  ))}
-                </div>
                 <div className="ptable-cost">
-                  <span className="cost-label">Costo / g</span>
+                  <span className="cost-label">Costo Normal / g</span>
                   <span className="cost-value">${fmtCLP(cat.cost ?? 0)}</span>
                 </div>
                 <div className="ptable-cost" style={{borderTop:'1px solid var(--line)',paddingTop:8,marginTop:4}}>
@@ -3531,16 +3342,6 @@ function PricesTab({ prices, activeTier }){
               </div>
             );
           })}
-        </div>
-        <div className="tiers-legend">
-          <h3>Reglas de tramo</h3>
-          <ul>
-            <li><span className="t">T-0</span><span>Venta hasta $30.000 (sin descuento)</span></li>
-            <li><span className="t">T-I</span><span>Venta supera $30.000</span></li>
-            <li><span className="t">T-II</span><span>Venta supera $100.000</span></li>
-            <li><span className="t">T-III</span><span>Peso supera 500g</span></li>
-            <li><span className="t">T-IV</span><span>Peso supera 1.000g</span></li>
-          </ul>
         </div>
       </div>
 
@@ -3682,19 +3483,15 @@ function TweaksPanel({ prices, setPrices, onClose }){
             {CATEGORY_ORDER.map(k => <option key={k} value={k}>{prices[k].name}</option>)}
           </select>
         </div>
-        {[0,1,2,3,4].map(i => (
-          <div className="tweak-row" key={i}>
-            <label>Tramo {TIER_RULES[i].label} (CLP/g)</label>
+        {['cost','costKilero'].map(field => (
+          <div className="tweak-row" key={field}>
+            <label>{field === 'cost' ? 'Costo Normal (CLP/g)' : 'Costo Kilero (CLP/g)'}</label>
             <input
               type="number"
-              value={prices[cat].prices[i]}
+              value={prices[cat][field] ?? 0}
               onChange={e => {
                 const v = Number(e.target.value) || 0;
-                setPrices(p => {
-                  const copy = { ...p, [cat]: { ...p[cat], prices: [...p[cat].prices] } };
-                  copy[cat].prices[i] = v;
-                  return copy;
-                });
+                setPrices(p => ({ ...p, [cat]: { ...p[cat], [field]: v } }));
               }}
             />
           </div>
@@ -3918,7 +3715,7 @@ function ChartsTab({ history, prices }) {
           buckets[bIdx].insumos+=val*qty; buckets[bIdx].total+=val*qty;
         } else {
           const grp=catToGroup[l.category]; if(!grp) continue;
-          const price=(prices[l.category]?.prices[q.tier])||0;
+          const price=(Number(l.customPrice)||0);
           const rev=(Number(l.grams)||0)*price;
           buckets[bIdx][grp]+=rev; buckets[bIdx].total+=rev;
         }
@@ -4377,7 +4174,7 @@ Agenda : ${scheduler}
 
 ${piezas}
 
-Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
+Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
     try {
       if (navigator.share) {
         await navigator.share({ text: msg });
@@ -4450,7 +4247,7 @@ Venta: $${fmtCLP(ventaTotal)}${totals.tier === 4 ? '\n(Precio Kilero)' : ''}`;
         }
         return { category: l.category, grams: Number(l.grams), customPrice: Number(l.customPrice) || 0, isGift: !!l.isGift };
       }),
-      tier: totals.tier, total: savedTotal, totalWeight: totals.totalWeight,
+      total: savedTotal, totalWeight: totals.totalWeight,
       pago, kilero, kileroSpecial, costsSnap, totalCost, profit, baseCostIncluded: true,
     };
     try {
