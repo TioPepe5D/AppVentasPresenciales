@@ -339,7 +339,7 @@
   .quote-lines{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
   .q-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-dim);background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:5px 11px;line-height:1.3}
   .q-grams{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
-  .q-price{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
+  .q-price{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);font-weight:600}
   .q-divider{height:1px;background:var(--line);margin:0 -16px 13px}
   .quote-staff{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
   .q-person{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px}
@@ -703,14 +703,24 @@ window.addEventListener('error', function(e){
 const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ---------- Data ----------
+// 4 grupos de costo → mapeados a las categorías de venta
+const MATERIAL_COSTS = [
+  { key:'cadena',   name:'Cadena 🔗',        cost:450,  costKilero:405,  cats:['collar_pulsera_mujer_925','collar_pulsera_hombre_925'] },
+  { key:'micro',    name:'Microzircón 💎',   cost:650,  costKilero:550,  cats:['aros_colgantes_925','anillos_925','collar_pulsera_micro'] },
+  { key:'italiana', name:'Italiana 925 🇮🇹', cost:3000, costKilero:3000, cats:['italiana_925'] },
+  { key:'gf18k',   name:'Oro GF 18K ⚜️',    cost:1600, costKilero:1500, cats:['gf_18k'] },
+];
+const CAT_MATERIAL = {};
+MATERIAL_COSTS.forEach(m => m.cats.forEach(c => CAT_MATERIAL[c] = m.key));
+
 const DEFAULT_PRICES = {
-  "collar_pulsera_mujer_925":  { "name": "Collar y Pul Mujer 💁🏼‍♀️",  "material": "SL 925",  "cost": 450,  "costKilero": 405 },
-  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "material": "SL 925",  "cost": 450,  "costKilero": 405 },
-  "aros_colgantes_925":        { "name": "Aros y Colgantes ✨",        "material": "SL 925",  "cost": 650,  "costKilero": 550 },
-  "anillos_925":               { "name": "Anillos 💍",                 "material": "SL 925",  "cost": 650,  "costKilero": 550 },
-  "collar_pulsera_micro":      { "name": "Collar y Pul Micro 💎",      "material": "Micro",   "cost": 650,  "costKilero": 550 },
-  "italiana_925":              { "name": "Italiana 🇮🇹",               "material": "925",     "cost": 3000, "costKilero": 3000 },
-  "gf_18k":                    { "name": "GF 18 K ⚜️",                 "material": "GF 18K",  "cost": 1600, "costKilero": 1500 }
+  "collar_pulsera_mujer_925":  { "name": "Collar y Pul Mujer 💁🏼‍♀️",  "cost": 450,  "costKilero": 405  },
+  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "cost": 450,  "costKilero": 405  },
+  "aros_colgantes_925":        { "name": "Aros y Colgantes ✨",        "cost": 650,  "costKilero": 550  },
+  "anillos_925":               { "name": "Anillos 💍",                 "cost": 650,  "costKilero": 550  },
+  "collar_pulsera_micro":      { "name": "Collar y Pul Micro 💎",      "cost": 650,  "costKilero": 550  },
+  "italiana_925":              { "name": "Italiana 🇮🇹",               "cost": 3000, "costKilero": 3000 },
+  "gf_18k":                    { "name": "GF 18 K ⚜️",                 "cost": 1600, "costKilero": 1500 }
 };
 
 const CATEGORY_ORDER = Object.keys(DEFAULT_PRICES);
@@ -1202,6 +1212,36 @@ function computeTotals(lines, prices){
   const loteTotal = lines.filter(l => l.category === LOTE_KEY).reduce((s,l) => s + (Number(l.lotePrice)||0), 0);
   const total = regularTotal + insumoTotal + loteTotal;
   return { total, totalWeight };
+}
+
+// ---------- Precio por gramo de líneas en ventas guardadas ----------
+// Ventas nuevas: cada línea regular guarda su customPrice (precio/g fijado por el vendedor).
+// Ventas antiguas (sistema de tramos): no guardaban precio por línea, así que se reparte
+// el total cobrado de la venta proporcionalmente entre los gramos de plata vendidos,
+// descontando lo ya cubierto por insumos y lotes.
+function _legacyPricePerGram(q){
+  if (!q || !Array.isArray(q.lines)) return 0;
+  const regular = q.lines.filter(l => l.category !== INSUMO_KEY && l.category !== LOTE_KEY && !l.isGift);
+  const totalGrams = regular.reduce((s,l) => s + (Number(l.grams)||0), 0);
+  if (totalGrams <= 0) return 0;
+  let accounted = 0;
+  for (const l of q.lines){
+    if (l.isGift) continue;
+    if (l.category === INSUMO_KEY){
+      const val = (l.insumoValor!==undefined&&l.insumoValor!==null&&l.insumoValor!=='') ? Number(l.insumoValor) : (Number(l.insumoCost)||0);
+      accounted += val * (Number(l.insumoQty)||1);
+    } else if (l.category === LOTE_KEY){
+      accounted += Number(l.lotePrice)||0;
+    }
+  }
+  const distributable = Math.max(0, (Number(q.total)||0) - accounted);
+  return distributable / totalGrams;
+}
+// Precio/g efectivo de una línea regular de una venta guardada (nueva o antigua).
+function regularLinePrice(q, l){
+  const cp = Number(l.customPrice)||0;
+  if (cp > 0) return cp;
+  return _legacyPricePerGram(q);
 }
 
 /* ═══════════════════════════════════════
@@ -2381,10 +2421,13 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                             );
                           }
                           const cs = CAT_CHIP_STYLE[l.category];
+                          const effPrice = regularLinePrice(h, l);
+                          const lineTotal = effPrice * (Number(l.grams)||0);
                           return (
                             <span key={i} className="q-chip" style={cs||{}}>
                               {(prices[l.category] && prices[l.category].name) || l.category}
                               <span className="q-grams">{l.grams}g</span>
+                              {lineTotal > 0 && <span className="q-price">${fmtCLP(Math.round(lineTotal))}</span>}
                             </span>
                           );
                         })}
@@ -2639,7 +2682,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
         } else {
           const grp=CAT_TO_GROUP[l.category]; if(!grp) continue;
           const g=Number(l.grams)||0; if(!g) continue;
-          const price=(Number(l.customPrice)||0);
+          const price=regularLinePrice(q,l);
           G[grp].grams+=g; G[grp].revenue+=g*price; seen.add(grp);
         }
       }
@@ -2669,7 +2712,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
           const qty=Number(l.insumoQty)||1;
           insumoVal+=val*qty; value+=val*qty;
         } else {
-          const price=(Number(l.customPrice)||0);
+          const price=regularLinePrice(q,l);
           const v=price*(Number(l.grams)||0);
           joyeriaVal+=v; value+=v;
         }
@@ -2851,7 +2894,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
     for(const q of periodQuotes){
       for(const l of(q.lines||[])){
         const grp=catToGroup[l.category]; if(!grp) continue;
-        const price=(Number(l.customPrice)||0);
+        const price=regularLinePrice(q,l);
         revenueByGroup[grp]+=(Number(l.grams)||0)*price;
       }
     }
@@ -3323,13 +3366,16 @@ function PricesTab({ prices }){
           <h2>Costos <em>internos</em></h2>
         </div>
         <div className="ptable">
-          {CATEGORY_ORDER.map(key => {
-            const cat = prices[key];
+          {MATERIAL_COSTS.map(mat => {
+            const cat = prices[mat.cats[0]];
+            if (!cat) return null;
             return (
-              <div className="ptable-row" key={key}>
+              <div className="ptable-row" key={mat.key}>
                 <div className="ptable-name">
-                  <span>{cat.name}</span>
-                  <span className="mat">{cat.material}</span>
+                  <span style={{fontSize:15,fontWeight:700}}>{mat.name}</span>
+                  <span className="mat" style={{fontSize:10,color:'var(--ink-mute)'}}>
+                    {mat.cats.map(c => DEFAULT_PRICES[c]?.name).join(' · ')}
+                  </span>
                 </div>
                 <div className="ptable-cost">
                   <span className="cost-label">Costo Normal / g</span>
@@ -3469,7 +3515,9 @@ function ThemePicker({ theme, setTheme, customTheme, setCustomTheme, onClose }){
 
 // ---------- Tweaks (host toolbar) ----------
 function TweaksPanel({ prices, setPrices, onClose }){
-  const [cat, setCat] = useState(CATEGORY_ORDER[0]);
+  const [matKey, setMatKey] = useState(MATERIAL_COSTS[0].key);
+  const mat = MATERIAL_COSTS.find(m => m.key === matKey);
+  const repCat = mat.cats[0];
   return (
     <div className="tweaks open">
       <div className="tweaks-head">
@@ -3478,9 +3526,9 @@ function TweaksPanel({ prices, setPrices, onClose }){
       </div>
       <div className="tweaks-body">
         <div className="tweak-row">
-          <label>Categoría</label>
-          <select value={cat} onChange={e=>setCat(e.target.value)}>
-            {CATEGORY_ORDER.map(k => <option key={k} value={k}>{prices[k].name}</option>)}
+          <label>Material</label>
+          <select value={matKey} onChange={e=>setMatKey(e.target.value)}>
+            {MATERIAL_COSTS.map(m => <option key={m.key} value={m.key}>{m.name}</option>)}
           </select>
         </div>
         {['cost','costKilero'].map(field => (
@@ -3488,10 +3536,14 @@ function TweaksPanel({ prices, setPrices, onClose }){
             <label>{field === 'cost' ? 'Costo Normal (CLP/g)' : 'Costo Kilero (CLP/g)'}</label>
             <input
               type="number"
-              value={prices[cat][field] ?? 0}
+              value={prices[repCat]?.[field] ?? 0}
               onChange={e => {
                 const v = Number(e.target.value) || 0;
-                setPrices(p => ({ ...p, [cat]: { ...p[cat], [field]: v } }));
+                setPrices(p => {
+                  const next = { ...p };
+                  mat.cats.forEach(c => { next[c] = { ...next[c], [field]: v }; });
+                  return next;
+                });
               }}
             />
           </div>
@@ -3715,7 +3767,7 @@ function ChartsTab({ history, prices }) {
           buckets[bIdx].insumos+=val*qty; buckets[bIdx].total+=val*qty;
         } else {
           const grp=catToGroup[l.category]; if(!grp) continue;
-          const price=(Number(l.customPrice)||0);
+          const price=regularLinePrice(q,l);
           const rev=(Number(l.grams)||0)*price;
           buckets[bIdx][grp]+=rev; buckets[bIdx].total+=rev;
         }
