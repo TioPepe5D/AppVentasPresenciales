@@ -2033,23 +2033,6 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                     </div>
                   </div>
                 )}
-                {!isInsumo && !isLote && !isGift && (
-                  <div style={{gridColumn:'1 / -1',marginTop:2}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 0'}}>
-                      <span style={{color:'var(--ink-mute)',fontFamily:'var(--mono)',fontSize:13}}>$</span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={line.customPrice || ''}
-                        onChange={e => updateLine(line.id, { customPrice: e.target.value })}
-                        placeholder="Precio por gramo"
-                        style={{flex:1,background:'var(--surface-2,rgba(255,255,255,.06))',border:'1px solid var(--line)',borderRadius:8,padding:'8px 12px',color:'var(--ink)',fontFamily:'var(--mono)',fontSize:13}}
-                      />
-                      <span style={{color:'var(--ink-mute)',fontSize:12,fontFamily:'var(--mono)',flexShrink:0}}>CLP/g</span>
-                    </div>
-                  </div>
-                )}
                 <div className="line-meta">
                   {isGift ? (
                     <>
