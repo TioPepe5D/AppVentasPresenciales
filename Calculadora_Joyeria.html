@@ -2397,7 +2397,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onCopyInt
                         <div className="q-table-head">
                           <span className="q-col-name">Producto</span>
                           <span className="q-col-g">Gramos / Un.</span>
-                          <span className="q-col-price">Costo</span>
+                          <span className="q-col-price">Venta</span>
                         </div>
                         {h.lines.map((l, i) => {
                           const catColor = CAT_CHIP_STYLE[l.category]?.borderColor;
@@ -2435,14 +2435,12 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onCopyInt
                             </div>
                           );
                         })}
-                        {/* fila total gramos */}
-                        {totalG > 0 && (
-                          <div className="q-chip" style={{background:'var(--bg-2)'}}>
-                            <span className="q-foot-label">Total gramos vendidos</span>
-                            <span className="q-grams-foot">{totalG}g</span>
-                            <span className="q-grams-foot" style={{borderLeft:'1px solid var(--line)'}}/>
-                          </div>
-                        )}
+                        {/* fila total */}
+                        <div className="q-chip" style={{background:'var(--bg-2)'}}>
+                          <span className="q-foot-label">Total Vendido</span>
+                          <span className="q-grams-foot">{totalG > 0 ? `${totalG}g` : '—'}</span>
+                          <span className="q-price" style={{fontSize:13,fontWeight:800,color:'var(--gold-2)'}}>${fmtCLP(h.total)}</span>
+                        </div>
                       </div>
 
                       {(h.scheduler || h.attendant || h.pago) && (
