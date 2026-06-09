@@ -337,12 +337,17 @@
   .quote-name{font-size:18px;font-weight:700;letter-spacing:.005em;color:var(--ink)}
   .quote-name em{color:var(--ink-mute);font-weight:400;font-size:14px;font-style:italic}
   .quote-date{font-family:var(--mono);font-size:10px;color:var(--ink-mute);letter-spacing:.07em;white-space:nowrap}
-  .quote-lines{display:flex;flex-direction:column;margin-bottom:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .q-chip{display:flex;align-items:center;gap:0;font-size:13px;color:var(--ink-dim);background:none;border:none;border-bottom:1px solid var(--line);border-radius:0;padding:9px 16px;line-height:1.3}
+  .quote-lines{display:table;width:100%;border-collapse:collapse;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .q-table-head{display:table-row;background:var(--bg-2)}
+  .q-table-head .q-col-name,.q-table-head .q-col-g,.q-table-head .q-col-price{display:table-cell;padding:5px 14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);border-bottom:1px solid var(--line)}
+  .q-col-g,.q-col-price{text-align:right;border-left:1px solid var(--line);white-space:nowrap}
+  .q-chip{display:table-row;border-bottom:1px solid var(--line)}
   .q-chip:last-child{border-bottom:none}
-  .q-chip-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .q-grams{font-family:var(--mono);font-size:11px;color:var(--ink-mute);margin-left:auto;padding-left:10px;flex-shrink:0}
-  .q-price{font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:700;padding-left:10px;flex-shrink:0}
+  .q-chip-name{display:table-cell;padding:9px 14px;font-size:13px;color:var(--ink-dim);vertical-align:middle}
+  .q-grams{display:table-cell;padding:9px 14px;font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-align:right;border-left:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  .q-grams-foot{display:table-cell;padding:7px 14px;font-family:var(--mono);font-size:10px;color:var(--ink-mute);text-align:right;border-left:1px solid var(--line);vertical-align:middle;letter-spacing:.04em}
+  .q-foot-label{display:table-cell;padding:7px 14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);vertical-align:middle}
+  .q-price{display:table-cell;padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:700;text-align:right;border-left:1px solid var(--line);vertical-align:middle;white-space:nowrap}
   .q-divider{height:1px;background:var(--line);margin:0}
   .quote-staff{display:flex;flex-wrap:wrap;gap:7px}
   .q-person{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px}
@@ -2388,15 +2393,24 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onCopyInt
                       </div>
 
                       <div className="quote-lines">
+                        {/* encabezado de tabla */}
+                        <div className="q-table-head">
+                          <span className="q-col-name">Producto</span>
+                          <span className="q-col-g">Gramos / Un.</span>
+                          <span className="q-col-price">Costo</span>
+                        </div>
                         {h.lines.map((l, i) => {
+                          const catColor = CAT_CHIP_STYLE[l.category]?.borderColor;
+                          const rowStyle = catColor ? {borderLeft:`3px solid ${catColor}`} : {};
                           if (l.category === INSUMO_KEY) {
                             const esRegalo = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) === 0 : (l.insumoPrice || 0) === 0;
                             const displayVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) * (Number(l.insumoQty)||1) : (l.insumoPrice || 0);
                             return (
                               <div key={i} className="q-chip">
                                 <span className="q-chip-name">💎 {l.insumoName || 'Insumo'}</span>
+                                <span className="q-grams">{Number(l.insumoQty)||1} un.</span>
                                 {esRegalo
-                                  ? <span style={{fontFamily:'var(--mono)',fontSize:10,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 6px',letterSpacing:'.06em',flexShrink:0,marginLeft:'auto'}}>🎁 REGALO</span>
+                                  ? <span className="q-price" style={{color:'var(--gold-2)'}}>🎁 Regalo</span>
                                   : <span className="q-price">${fmtCLP(displayVal)}</span>
                                 }
                               </div>
@@ -2406,25 +2420,27 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onCopyInt
                             return (
                               <div key={i} className="q-chip">
                                 <span className="q-chip-name">📦 {l.loteName || 'Lote'}</span>
-                                {l.grams ? <span className="q-grams">{l.grams}g</span> : null}
+                                <span className="q-grams">{l.grams ? `${l.grams}g` : '—'}</span>
                                 <span className="q-price">${fmtCLP(l.lotePrice || 0)}</span>
                               </div>
                             );
                           }
-                          const cs = CAT_CHIP_STYLE[l.category];
                           const effPrice = regularLinePrice(h, l);
                           const lineTotal = effPrice * (Number(l.grams)||0);
                           return (
-                            <div key={i} className="q-chip" style={cs ? {background: cs.background || 'none', borderLeft: cs.borderColor ? `3px solid ${cs.borderColor}` : undefined} : {}}>
+                            <div key={i} className="q-chip" style={rowStyle}>
                               <span className="q-chip-name">{(prices[l.category] && prices[l.category].name) || l.category}</span>
-                              {Number(l.grams) > 0 && <span className="q-grams">{l.grams}g</span>}
-                              {lineTotal > 0 && <span className="q-price">${fmtCLP(Math.round(lineTotal))}</span>}
+                              <span className="q-grams">{Number(l.grams) > 0 ? `${l.grams}g` : '—'}</span>
+                              <span className="q-price">{lineTotal > 0 ? `$${fmtCLP(Math.round(lineTotal))}` : '—'}</span>
                             </div>
                           );
                         })}
+                        {/* fila total gramos */}
                         {totalG > 0 && (
-                          <div style={{display:'flex',justifyContent:'flex-end',padding:'6px 16px',background:'var(--bg-2)'}}>
-                            <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',letterSpacing:'.05em'}}>{totalG}g en plata</span>
+                          <div className="q-chip" style={{background:'var(--bg-2)'}}>
+                            <span className="q-foot-label">Total gramos vendidos</span>
+                            <span className="q-grams-foot">{totalG}g</span>
+                            <span className="q-grams-foot" style={{borderLeft:'1px solid var(--line)'}}/>
                           </div>
                         )}
                       </div>
