@@ -325,10 +325,11 @@
   .history-search svg{flex-shrink:0;color:var(--ink-mute)}
 
   .quote{
-    padding:16px;border-radius:18px;background:var(--panel);
+    padding:0;border-radius:18px;background:var(--panel);
     border:1px solid var(--line);border-top:3px solid transparent;
     box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;
   }
+  .quote-inner-pad{padding:14px 16px}
   .quote.q-ok{
     border-color:rgba(var(--accent-rgb),.28);border-top-color:var(--gold);
     box-shadow:0 4px 20px rgba(var(--accent-rgb),.13),0 1px 6px rgba(0,0,0,.1);
@@ -336,12 +337,19 @@
   .quote-name{font-size:18px;font-weight:700;letter-spacing:.005em;color:var(--ink)}
   .quote-name em{color:var(--ink-mute);font-weight:400;font-size:14px;font-style:italic}
   .quote-date{font-family:var(--mono);font-size:10px;color:var(--ink-mute);letter-spacing:.07em;white-space:nowrap}
-  .quote-lines{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-  .q-chip{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-dim);background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:5px 11px;line-height:1.3}
-  .q-grams{font-family:var(--mono);font-size:10.5px;color:var(--ink-mute)}
-  .q-price{font-family:var(--mono);font-size:10.5px;color:var(--ink-dim);font-weight:600}
-  .q-divider{height:1px;background:var(--line);margin:0 -16px 13px}
-  .quote-staff{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+  .quote-lines{display:table;width:100%;border-collapse:collapse;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .q-table-head{display:table-row;background:var(--bg-2)}
+  .q-table-head .q-col-name,.q-table-head .q-col-g,.q-table-head .q-col-price{display:table-cell;padding:5px 14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);border-bottom:1px solid var(--line)}
+  .q-col-g,.q-col-price{text-align:right;border-left:1px solid var(--line);white-space:nowrap}
+  .q-chip{display:table-row;border-bottom:1px solid var(--line)}
+  .q-chip:last-child{border-bottom:none}
+  .q-chip-name{display:table-cell;padding:9px 14px;font-size:13px;color:var(--ink-dim);vertical-align:middle}
+  .q-grams{display:table-cell;padding:9px 14px;font-family:var(--mono);font-size:11px;color:var(--ink-mute);text-align:right;border-left:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  .q-grams-foot{display:table-cell;padding:7px 14px;font-family:var(--mono);font-size:10px;color:var(--ink-mute);text-align:right;border-left:1px solid var(--line);vertical-align:middle;letter-spacing:.04em}
+  .q-foot-label{display:table-cell;padding:7px 14px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);vertical-align:middle}
+  .q-price{display:table-cell;padding:9px 14px;font-family:var(--mono);font-size:12px;color:var(--ink);font-weight:700;text-align:right;border-left:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+  .q-divider{height:1px;background:var(--line);margin:0}
+  .quote-staff{display:flex;flex-wrap:wrap;gap:7px}
   .q-person{display:inline-flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px}
   .q-avatar{width:26px;height:26px;border-radius:50%;background:rgba(var(--accent-rgb),.18);border:1px solid rgba(var(--accent-rgb),.32);display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8.5px;font-weight:800;color:var(--gold-2);letter-spacing:0;flex-shrink:0}
   .q-pinfo{display:flex;flex-direction:column;gap:1px}
@@ -378,7 +386,7 @@
   .ri-sub .sep{color:var(--line-2)}
   .ri-splits{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .ri-chip{font-family:var(--mono);font-size:10.5px;background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);padding:3px 8px;border-radius:999px;letter-spacing:.02em}
-  .quote-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+  .quote-foot{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .quote-total{font-size:26px;color:var(--gold-2);font-weight:700;letter-spacing:-.02em;line-height:1}
   .quote-total .currency{font-family:var(--mono);font-weight:500;font-size:10px;color:var(--ink-mute);letter-spacing:.15em;margin-right:5px}
   .quote-pago{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink-mute);margin-top:5px}
@@ -389,15 +397,16 @@
     padding:3px 8px;border:1px solid rgba(var(--accent-rgb),.32);border-radius:999px;
     text-transform:uppercase;
   }
-  .quote-actions{display:flex;gap:6px;align-self:flex-end}
+  .quote-actions{display:flex;gap:0;align-self:flex-end;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
   .icon-btn{
-    width:40px;height:40px;border-radius:50%;
-    border:1px solid var(--line);background:var(--panel);
+    width:40px;height:40px;border-radius:0;
+    border:none;border-left:1px solid var(--line);background:transparent;
     display:grid;place-items:center;color:var(--ink-dim);
-    transition:all .15s;
+    transition:all .15s;flex-shrink:0;
   }
-  .icon-btn:hover{border-color:var(--gold);color:var(--gold-2)}
-  .icon-btn.danger:hover{border-color:rgba(224,122,122,.4);color:var(--danger)}
+  .icon-btn:first-child{border-left:none}
+  .icon-btn:hover{background:rgba(var(--accent-rgb),.08);color:var(--gold-2)}
+  .icon-btn.danger:hover{background:rgba(224,122,122,.08);color:var(--danger)}
   .icon-btn.on{border-color:var(--gold);color:var(--gold-2);background:linear-gradient(180deg, rgba(var(--accent-bright-rgb),.12), rgba(var(--accent-rgb),.05))}
 
   /* Price table */
@@ -1343,6 +1352,7 @@ const Icon = ({ name, size=16 }) => {
     case 'sliders': return <svg {...common}><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h14M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>;
     case 'check': return <svg {...common}><path d="M20 6L9 17l-5-5"/></svg>;
     case 'circle': return <svg {...common}><circle cx="12" cy="12" r="8"/></svg>;
+    case 'clipboard': return <svg {...common}><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M8 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2h-2"/><path d="M9 12h6M9 16h4"/></svg>;
     default: return null;
   }
 };
@@ -1708,7 +1718,7 @@ function SalesList({ quotes, prices }){
 ═══════════════════════════════════════ */
 
 // ---------- Calculator Tab ----------
-function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, copyMessage, canCopy, customTotal, setCustomTotal, kileroActive, kileroAuto, kileroSpecial, onKileroToggle }){
+function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setScheduler, attendant, setAttendant, concretada, setConcretada, lines, prices, addLine, removeLine, updateLine, totals, resetCalc, saveQuote, isSaving, copyMessage, canCopy, customTotal, setCustomTotal, kileroActive, kileroAuto, kileroSpecial, onKileroToggle }){
   const [openPickerId, setOpenPickerId] = useState(null);
   const [editingTotal, setEditingTotal] = useState(false);
   const displayTotal = customTotal !== "" ? (Number(customTotal.toString().replace(/\D/g,"")) || 0) : totals.total;
@@ -2202,10 +2212,9 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
           </div>
 
           <div className="actions">
-            <button className="btn ghost" onClick={resetCalc}>Limpiar</button>
-            <button className="btn primary" onClick={saveQuote}>Guardar cotización</button>
-            <button className="btn accent" onClick={copyMessage} disabled={!canCopy} style={{flexBasis:'100%'}}>
-              <span style={{fontSize:'18px'}}>📋</span> Copiar mensaje
+            <button className="btn ghost" onClick={resetCalc} disabled={isSaving}>Limpiar</button>
+            <button className="btn primary" onClick={saveQuote} disabled={isSaving}>
+              {isSaving ? '⏳ Guardando…' : 'Guardar cotización'}
             </button>
           </div>
         </div>
@@ -2224,7 +2233,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
 ═══════════════════════════════════════ */
 
 // ---------- History Tab ----------
-function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleConcretada }){
+function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onCopyInternal, onToggleConcretada }){
   const [q, setQ] = useState("");
   const [filterAttendant, setFilterAttendant] = useState("");
   const [filterScheduler, setFilterScheduler] = useState("");
@@ -2300,7 +2309,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
     return groups;
   }, [filtered]);
 
-  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',flex:1,minWidth:0,cursor:'pointer'};
+  const selStyle = {fontFamily:'var(--mono)',fontSize:11,padding:'5px 8px',borderRadius:8,border:'1px solid var(--line)',background:'var(--panel)',color:'var(--ink-dim)',cursor:'pointer',flexShrink:0};
   const chipStyle = (active)=>({fontFamily:'var(--mono)',fontSize:11,fontWeight:700,padding:'5px 12px',borderRadius:20,border:'1px solid var(--line)',background:active?'var(--accent)':'var(--panel)',color:active?'#fff':'var(--ink-dim)',cursor:'pointer',whiteSpace:'nowrap',transition:'background .15s,color .15s'});
 
   return (
@@ -2314,53 +2323,57 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
         {q && <button className="icon-btn" style={{width:28,height:28}} onClick={()=>setQ("")} aria-label="Limpiar búsqueda"><Icon name="x" size={12}/></button>}
       </div>
 
-      {/* ── chips de período estilo Reportes ── */}
-      <div style={{padding:'4px 14px 2px',display:'flex',gap:6,flexWrap:'wrap'}}>
-        {[['','Todos'],['daily','Diario'],['weekly','Semanal'],['monthly','Mensual'],['yearly','Anual']].map(([k,lbl])=>(
-          <button key={k} style={chipStyle(period===k)} onClick={()=>{setPeriod(k);setNavIdx(0);}}>{lbl}</button>
-        ))}
-      </div>
-      {period&&activeHKey&&(
-        <div style={{display:'flex',alignItems:'center',gap:10,padding:'4px 14px 6px'}}>
-          <button onClick={()=>setNavIdx(i=>Math.min(i+1,activeList.length-1))} disabled={boundedIdx>=activeList.length-1}
-            style={{width:32,height:32,borderRadius:'50%',border:'1px solid var(--line)',background:'var(--bg-2)',display:'grid',placeItems:'center',fontSize:14,color:'var(--ink-dim)',cursor:'pointer',flexShrink:0,opacity:boundedIdx>=activeList.length-1?.3:1}}>‹</button>
-          <div style={{flex:1,textAlign:'center',fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:'var(--ink)',textTransform:'capitalize'}}>{activeHLabel}</div>
-          <button onClick={()=>setNavIdx(i=>Math.max(i-1,0))} disabled={boundedIdx<=0}
-            style={{width:32,height:32,borderRadius:'50%',border:'1px solid var(--line)',background:'var(--bg-2)',display:'grid',placeItems:'center',fontSize:14,color:'var(--ink-dim)',cursor:'pointer',flexShrink:0,opacity:boundedIdx<=0?.3:1}}>›</button>
+      {/* ── filtros en tabla ── */}
+      <div style={{margin:'8px 14px 6px',border:'1px solid var(--line)',borderRadius:10,overflow:'hidden',background:'var(--panel)'}}>
+        {/* fila 1: período */}
+        <div style={{display:'flex',borderBottom:'1px solid var(--line)'}}>
+          {[['','Todo'],['daily','Hoy'],['weekly','Semana'],['monthly','Mes'],['yearly','Año']].map(([k,lbl],i,arr)=>(
+            <button key={k} onClick={()=>{setPeriod(k);setNavIdx(0);}}
+              style={{flex:1,padding:'8px 0',fontFamily:'var(--mono)',fontSize:10,fontWeight:700,letterSpacing:'.08em',
+                textTransform:'uppercase',border:'none',borderLeft:i>0?'1px solid var(--line)':'none',
+                background:period===k?'rgba(var(--accent-rgb),.12)':'transparent',
+                color:period===k?'var(--gold-2)':'var(--ink-mute)',cursor:'pointer',transition:'all .15s'}}>
+              {lbl}
+            </button>
+          ))}
         </div>
-      )}
-
-      {/* ── selects ── */}
-      {(uniqueNames.att.length>0||uniqueNames.sched.length>0||uniqueNames.pago.length>0||true) && (
-        <div style={{padding:'6px 14px 8px',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-          {uniqueNames.att.length>0 && (
-            <select value={filterAttendant} onChange={e=>setFilterAttendant(e.target.value)} style={selStyle}>
-              <option value="">Atendió: Todos</option>
-              {uniqueNames.att.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
-          )}
-          {uniqueNames.sched.length>0 && (
-            <select value={filterScheduler} onChange={e=>setFilterScheduler(e.target.value)} style={selStyle}>
-              <option value="">Agendó: Todos</option>
-              {uniqueNames.sched.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
-          )}
-          {uniqueNames.pago.length>0 && (
-            <select value={filterPago} onChange={e=>setFilterPago(e.target.value)} style={selStyle}>
-              <option value="">Pago: Todos</option>
-              {uniqueNames.pago.map(n=><option key={n} value={n}>{n}</option>)}
-            </select>
-          )}
-          <select value={filterKilo} onChange={e=>setFilterKilo(e.target.value)} style={selStyle}>
-            <option value="">Tipo: Todos</option>
-            <option value="kilo">📦 Por kilo</option>
-            <option value="individual">💍 Individual</option>
-          </select>
+        {/* fila 2: selects */}
+        <div style={{display:'flex'}}>
+          {[
+            uniqueNames.att.length>0  && ['att',  filterAttendant, setFilterAttendant, 'Atendió',  uniqueNames.att],
+            uniqueNames.sched.length>0 && ['sch', filterScheduler, setFilterScheduler, 'Agendó',   uniqueNames.sched],
+            uniqueNames.pago.length>0  && ['pag', filterPago,      setFilterPago,      'Pago',     uniqueNames.pago],
+            ['kilo', filterKilo, setFilterKilo, 'Tipo', null],
+          ].filter(Boolean).map(([key, val, setter, label, opts], i) => (
+            <div key={key} style={{flex:1,borderLeft:i>0?'1px solid var(--line)':'none',position:'relative'}}>
+              <select value={val} onChange={e=>setter(e.target.value)}
+                style={{width:'100%',padding:'7px 6px',fontFamily:'var(--mono)',fontSize:10,fontWeight:600,
+                  border:'none',background:'transparent',color: val ? 'var(--gold-2)' : 'var(--ink-mute)',
+                  cursor:'pointer',appearance:'none',WebkitAppearance:'none',textAlign:'center'}}>
+                <option value="">{label}</option>
+                {key==='kilo'
+                  ? [<option key="kilo" value="kilo">⚖️ Kilo</option>,<option key="ind" value="individual">💍 Individual</option>]
+                  : opts.map(n=><option key={n} value={n}>{n}</option>)
+                }
+              </select>
+            </div>
+          ))}
           {(hasFilters||period) && (
-            <button onClick={clearAll}
-              style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'5px 10px',borderRadius:8,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer',whiteSpace:'nowrap'}}
-            >✕ Limpiar</button>
+            <div style={{borderLeft:'1px solid var(--line)',display:'flex',alignItems:'center',padding:'0 8px'}}>
+              <button onClick={clearAll} style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,color:'var(--ink-mute)',background:'none',border:'none',cursor:'pointer',whiteSpace:'nowrap',padding:'4px 0'}}>✕</button>
+            </div>
           )}
+        </div>
+      </div>
+      {/* nav de fecha */}
+      {period&&activeHKey&&(
+        <div className="chart-nav" style={{margin:'0 14px 6px'}}>
+          <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.min(i+1,activeList.length-1))} disabled={boundedIdx>=activeList.length-1}>‹</button>
+          <div className="chart-nav-center">
+            <div className="chart-nav-label" style={{fontSize:13,textTransform:'capitalize'}}>{activeHLabel}</div>
+            {boundedIdx>0&&<button className="chart-nav-back" onClick={()=>setNavIdx(0)}>Volver a hoy</button>}
+          </div>
+          <button className="chart-nav-btn" onClick={()=>setNavIdx(i=>Math.max(i-1,0))} disabled={boundedIdx<=0}>›</button>
         </div>
       )}
 
@@ -2389,7 +2402,7 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                     <div className={`quote${h.concretada ? ' q-ok' : ''}`} key={h.id}
                       style={isKilero ? {borderColor:'rgba(201,168,76,.55)',boxShadow:'0 0 0 1px rgba(201,168,76,.18)'} : {}}>
 
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,marginBottom:10}}>
+                      <div className="quote-inner-pad" style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8}}>
                         <div style={{display:'flex',alignItems:'baseline',gap:8,minWidth:0,flexWrap:'wrap'}}>
                           <div className="quote-name" style={{margin:0}}>{h.client || <em>Sin nombre</em>}</div>
                           {isKilero && <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:800,letterSpacing:'.1em',color:'var(--gold-2)',background:'rgba(201,168,76,.12)',border:'1px solid rgba(201,168,76,.4)',borderRadius:4,padding:'1px 6px',flexShrink:0}}>{isSpecial ? '⭐ ESPECIAL' : '⚖️ KILO'}</span>}
@@ -2398,46 +2411,60 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                       </div>
 
                       <div className="quote-lines">
+                        {/* encabezado de tabla */}
+                        <div className="q-table-head">
+                          <span className="q-col-name">Producto</span>
+                          <span className="q-col-g">Gramos / Un.</span>
+                          <span className="q-col-price">Venta</span>
+                        </div>
                         {h.lines.map((l, i) => {
+                          const catColor = CAT_CHIP_STYLE[l.category]?.borderColor;
+                          const rowStyle = catColor ? {borderLeft:`3px solid ${catColor}`} : {};
                           if (l.category === INSUMO_KEY) {
                             const esRegalo = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) === 0 : (l.insumoPrice || 0) === 0;
                             const displayVal = (l.insumoValor !== undefined && l.insumoValor !== null) ? Number(l.insumoValor) * (Number(l.insumoQty)||1) : (l.insumoPrice || 0);
                             return (
-                              <span key={i} className="q-chip">
-                                {l.insumoName || 'Insumo'} 💎
+                              <div key={i} className="q-chip">
+                                <span className="q-chip-name">💎 {l.insumoName || 'Insumo'}</span>
+                                <span className="q-grams">{Number(l.insumoQty)||1} un.</span>
                                 {esRegalo
-                                  ? <span style={{fontFamily:'var(--mono)',fontSize:10,background:'rgba(var(--accent-rgb),.15)',border:'1px solid rgba(var(--accent-rgb),.35)',color:'var(--gold-2)',borderRadius:4,padding:'1px 5px',letterSpacing:'.06em'}}>🎁 REGALO</span>
+                                  ? <span className="q-price" style={{color:'var(--gold-2)'}}>🎁 Regalo</span>
                                   : <span className="q-price">${fmtCLP(displayVal)}</span>
                                 }
-                              </span>
+                              </div>
                             );
                           }
                           if (l.category === LOTE_KEY) {
                             return (
-                              <span key={i} className="q-chip">
-                                📦 {l.loteName || 'Lote'}
-                                {l.grams ? <span className="q-grams">{l.grams}g</span> : null}
+                              <div key={i} className="q-chip">
+                                <span className="q-chip-name">📦 {l.loteName || 'Lote'}</span>
+                                <span className="q-grams">{l.grams ? `${l.grams}g` : '—'}</span>
                                 <span className="q-price">${fmtCLP(l.lotePrice || 0)}</span>
-                              </span>
+                              </div>
                             );
                           }
-                          const cs = CAT_CHIP_STYLE[l.category];
                           const effPrice = regularLinePrice(h, l);
                           const lineTotal = effPrice * (Number(l.grams)||0);
                           return (
-                            <span key={i} className="q-chip" style={cs||{}}>
-                              {(prices[l.category] && prices[l.category].name) || l.category}
-                              <span className="q-grams">{l.grams}g</span>
-                              {lineTotal > 0 && <span className="q-price">${fmtCLP(Math.round(lineTotal))}</span>}
-                            </span>
+                            <div key={i} className="q-chip" style={rowStyle}>
+                              <span className="q-chip-name">{(prices[l.category] && prices[l.category].name) || l.category}</span>
+                              <span className="q-grams">{Number(l.grams) > 0 ? `${l.grams}g` : '—'}</span>
+                              <span className="q-price">{lineTotal > 0 ? `$${fmtCLP(Math.round(lineTotal))}` : '—'}</span>
+                            </div>
                           );
                         })}
+                        {/* fila total */}
+                        <div className="q-chip" style={{background:'var(--bg-2)'}}>
+                          <span className="q-foot-label">Total Vendido</span>
+                          <span className="q-grams-foot">{totalG > 0 ? `${totalG}g` : '—'}</span>
+                          <span className="q-price" style={{fontSize:13,fontWeight:800,color:'var(--gold-2)'}}>${fmtCLP(h.total)}</span>
+                        </div>
                       </div>
 
                       {(h.scheduler || h.attendant || h.pago) && (
                         <>
-                          <div className="q-divider"/>
-                          <div className="quote-staff">
+                          <div className="q-divider" style={{margin:0}}/>
+                          <div className="quote-staff" style={{padding:'10px 16px'}}>
                             {h.scheduler && (
                               <span className="q-person">
                                 <span className="q-avatar">{initials(normName(h.scheduler))}</span>
@@ -2471,14 +2498,14 @@ function HistoryTab({ history, prices, onDelete, onDuplicate, onShare, onToggleC
                         </>
                       )}
 
-                      <div className="quote-foot">
+                      <div className="quote-foot" style={{padding:'10px 16px',borderTop:'1px solid var(--line)',background:'var(--bg-2)'}}>
                         <div>
                           <div className="quote-total"><span className="currency">CLP</span>${fmtCLP(h.total)}</div>
-                          {totalG > 0 && <div className="q-grams-total">{totalG}g en plata</div>}
                         </div>
                         <div className="quote-actions">
-                          <button className="icon-btn" onClick={()=>onShare(h)} aria-label="Compartir"><Icon name="share" size={14}/></button>
-                          <button className="icon-btn" onClick={()=>onDuplicate(h)} aria-label="Duplicar"><Icon name="copy" size={14}/></button>
+                          <button className="icon-btn" onClick={()=>onShare(h)} aria-label="Mensaje cliente" title="Mensaje cliente"><Icon name="share" size={14}/></button>
+                          <button className="icon-btn" onClick={()=>onCopyInternal(h)} aria-label="Resumen interno" title="Resumen interno"><Icon name="clipboard" size={14}/></button>
+                          <button className="icon-btn" onClick={()=>onDuplicate(h)} aria-label="Duplicar" title="Duplicar"><Icon name="copy" size={14}/></button>
                           <button className="icon-btn danger" onClick={()=>{ if (confirm('¿Eliminar esta cotización?')) onDelete(h.id); }} aria-label="Eliminar"><Icon name="trash" size={14}/></button>
                         </div>
                       </div>
@@ -4132,6 +4159,7 @@ function App(){
 
   // Tweaks (modo edición por postMessage)
   const [editMode, setEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
     const onMsg = (e) => {
       if (!e.data) return;
@@ -4245,8 +4273,10 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
   };
 
   const saveQuote = async () => {
+    if (isSaving) return;
     const validLines = lines.filter(isValidLine);
     if (validLines.length === 0) { showToast("Agrega al menos una línea"); return; }
+    setIsSaving(true);
     const costsSnap = {};
     let totalCost = 1000; // BASE_COST: empaque/bolsas
     const kilero = kileroActive;
@@ -4309,7 +4339,11 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
       await window.__FB.saveQuote(fbUser.uid, cleanEntry);
       resetCalc();
       showToast("Cotización guardada ☁️");
-    } catch(e) { showToast("Error al guardar: " + e.message); }
+    } catch(e) {
+      showToast("Error al guardar: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const loadQuote = (q) => {
@@ -4347,6 +4381,28 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
 
   const deleteQuote = async (id) => {
     await window.__FB.deleteQuote(id);
+  };
+
+  const copyInternalSummary = async (q) => {
+    const piezas = buildMessagePiezas(q.lines, prices);
+    const msg = `Nombre Cliente : ${q.client || ''}
+Pago: ${normName(q.pago || '')}
+Atencion : ${normName(q.attendant || '')}
+Agenda : ${normName(q.scheduler || '')}
+
+${piezas}
+
+Venta: $${fmtCLP(q.total)}${q.kilero ? '\n(Precio Kilero)' : ''}`;
+    try {
+      if (navigator.share) { await navigator.share({ text: msg }); showToast("¡Enviado!"); }
+      else { await navigator.clipboard.writeText(msg); showToast("¡Resumen copiado!"); }
+    } catch(e) {
+      if (e?.name === 'AbortError') return;
+      const ta = document.createElement('textarea');
+      ta.value = msg; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); showToast("¡Resumen copiado!"); } catch(_){ showToast("No se pudo copiar"); }
+      document.body.removeChild(ta);
+    }
   };
 
   const shareQuote = async (q) => {
@@ -4482,7 +4538,7 @@ ${sep}`;
           concretada={concretada} setConcretada={setConcretada}
           lines={lines} prices={prices}
           addLine={addLine} removeLine={removeLine} updateLine={updateLine}
-          totals={totals} resetCalc={resetCalc} saveQuote={saveQuote}
+          totals={totals} resetCalc={resetCalc} saveQuote={saveQuote} isSaving={isSaving}
           copyMessage={copyMessage} canCopy={hasValidLines}
           customTotal={customTotal} setCustomTotal={setCustomTotal}
           kileroActive={kileroActive} kileroAuto={kileroAuto} kileroSpecial={kileroSpecial}
@@ -4492,7 +4548,7 @@ ${sep}`;
       {tab === 'hist' && (
         <HistoryTab history={history} prices={prices}
           onDelete={deleteQuote} onDuplicate={loadQuote} onShare={shareQuote}
-          onToggleConcretada={toggleConcretada} />
+          onCopyInternal={copyInternalSummary} onToggleConcretada={toggleConcretada} />
       )}
       {tab === 'reports' && (
         <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} />
@@ -4545,12 +4601,6 @@ ${sep}`;
             </div>
           </div>
         </div>
-      )}
-
-      {tab === 'calc' && (
-        <button className="fab" onClick={() => copyMessage()} disabled={!hasValidLines}>
-          <span className="ico">📋</span> Copiar mensaje
-        </button>
       )}
 
       {editMode && <TweaksPanel prices={prices} setPrices={setPrices} onClose={()=>setEditMode(false)} />}
