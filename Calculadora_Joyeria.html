@@ -1778,7 +1778,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
         </div>
         <div className="client">
           <div className="control-labeled">
-            <label>A quién le pago</label>
+            <label>A quién le pago <span style={{color:'var(--danger)'}}>*</span></label>
             <div className="control">
               <select value={pago} onChange={e => setPago(e.target.value)}>
                 <option value="">—</option>
@@ -1798,7 +1798,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             </div>
           </div>
           <div className="control-labeled">
-            <label>Agendó</label>
+            <label>Agendó <span style={{color:'var(--danger)'}}>*</span></label>
             <div className="control">
               <select value={scheduler} onChange={e => setScheduler(e.target.value)}>
                 <option value="">—</option>
@@ -1807,7 +1807,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
             </div>
           </div>
           <div className="control-labeled">
-            <label>Atendió</label>
+            <label>Atendió <span style={{color:'var(--danger)'}}>*</span></label>
             <div className="control">
               <select value={attendant} onChange={e => setAttendant(e.target.value)}>
                 <option value="">—</option>
@@ -4279,6 +4279,9 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
     if (isSaving) return;
     const validLines = lines.filter(isValidLine);
     if (validLines.length === 0) { showToast("Agrega al menos una línea"); return; }
+    if (!pago || !pago.trim())           { showToast("Falta: ¿A quién le pago?"); return; }
+    if (!scheduler || !scheduler.trim()) { showToast("Falta: ¿Quién agendó?"); return; }
+    if (!attendant || !attendant.trim()) { showToast("Falta: ¿Quién atendió?"); return; }
     setIsSaving(true);
     const costsSnap = {};
     let totalCost = 1000; // BASE_COST: empaque/bolsas
