@@ -2825,7 +2825,10 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
     const rows=[...allNames].map(name=>{
       const row=summary.rows.find(r=>r.name===name)||{comision:0,agendado:0,atendido:0,empresa:0};
       const pagosRecibidos=(summary.pagosByPerson||{})[name]||0;
-      const efectivo=name===EMPRESA ? empresaRecibe : (row.comision||0);
+      // Empresa recibe: ventas − comisiones del equipo + las comisiones que la propia
+      // Empresa ganó por agendar/atender (ventas sin agendó/atendió asignado). Sin esto,
+      // esas comisiones se restan de empresaRecibe pero no se re-suman y el balance no cuadra.
+      const efectivo=name===EMPRESA ? (empresaRecibe + (row.agendado||0) + (row.atendido||0)) : (row.comision||0);
       const balance=efectivo-pagosRecibidos;
       return {
         name,comision:efectivo,pagosRecibidos,balance,isEmpresa:name===EMPRESA,
