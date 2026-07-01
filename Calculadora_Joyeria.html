@@ -3147,6 +3147,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
                     <div style={{minWidth:0}}>
                       <div style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:'var(--ink)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{q.client||'Sin nombre'}</div>
                       <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginTop:2}}>{fmtRelDate(q.at)} · ${fmtCLP(q.total||0)}</div>
+                      {q.userName && <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--gold-2)',marginTop:2}}>Registró: {q.userName}</div>}
                     </div>
                     <div style={{display:'flex',gap:4,flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
                       {faltan.map(f=>(

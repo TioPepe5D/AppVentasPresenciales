@@ -1,4 +1,4 @@
-const CACHE_NAME = 'joyeria-aravena-v117';
+const CACHE_NAME = 'joyeria-aravena-v118';
 const ASSETS = [
   './',
   './Calculadora_Joyeria.html',
