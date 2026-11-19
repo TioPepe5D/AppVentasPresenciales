@@ -2591,7 +2591,7 @@ function TickerBand({items}){
   );
 }
 
-function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
+function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin, onFixTotal }){
   const [period, setPeriod] = useState('monthly');
   const [navIdx, setNavIdx] = useState(0);
   const [salesOpen, setSalesOpen] = useState(false);
@@ -3121,6 +3121,68 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts }){
           })()}
         </div>
       )}
+
+      {/* ── ventas con monto distinto al calculado (falla hasta v118) ── */}
+      {(()=>{
+        const sospechosas = periodQuotes.map(q=>{
+          if (q.montoRevisado) return null;
+          const ls = q.lines||[];
+          // Ventas antiguas sin precio por línea no se pueden recalcular
+          const legacy = ls.some(l=>l.category!==INSUMO_KEY&&l.category!==LOTE_KEY&&!l.isGift&&!(Number(l.customPrice)>0));
+          if (legacy || ls.length===0) return null;
+          const calc = Math.round(computeTotals(ls, prices).total);
+          const saved = Math.round(Number(q.total)||0);
+          if (calc<=0 || Math.abs(calc-saved) <= Math.max(500, calc*0.01)) return null;
+          const { totalCost } = quoteCostAndProfit(q, prices);
+          const comSaved = Math.max(0, saved-totalCost)*(PCT_SCHEDULER+PCT_ATTENDANT);
+          const comCalc  = Math.max(0, calc-totalCost)*(PCT_SCHEDULER+PCT_ATTENDANT);
+          const ratio = saved/calc;
+          const punto = saved>0 && [10,100,1000].some(f=>Math.abs(saved*f-calc)/calc<0.05);
+          const tipo = punto ? 'Posible error de punto' : ratio<0.5 ? 'Monto muy bajo' : saved<calc ? 'Descuento' : 'Sobreprecio';
+          return { q, calc, saved, totalCost, diffCom: comCalc-comSaved, tipo, grave: punto||ratio<0.5 };
+        }).filter(Boolean).sort((a,b)=>(b.grave-a.grave)||((b.calc-b.saved)-(a.calc-a.saved)));
+        if (sospechosas.length===0) return null;
+        const graves = sospechosas.filter(x=>x.grave);
+        const comPerdida = graves.reduce((s,x)=>s+Math.max(0,x.diffCom),0);
+        return (
+          <div className="chart-card" style={{marginBottom:8,border:'1px solid rgba(var(--accent-rgb),.4)'}}>
+            <div className="chart-head">
+              <h3>Ventas <em>con monto editado</em></h3>
+              <span className="eyebrow" style={{color:'var(--gold-2)'}}>{sospechosas.length}</span>
+            </div>
+            <div style={{padding:'4px 12px 12px'}}>
+              <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',marginBottom:8,lineHeight:1.4}}>
+                El total guardado no coincide con el calculado según precios y gramos.
+                {graves.length>0 && <> <b style={{color:'var(--danger)'}}>{graves.length} probable{graves.length>1?'s':''} error{graves.length>1?'es':''}</b> · comisiones del equipo afectadas ≈ <b style={{color:'var(--danger)'}}>${fmtCLP(Math.round(comPerdida))}</b>.</>}
+                {' '}Los descuentos pueden ser legítimos: verifica con lo que pagó el cliente.
+              </div>
+              {sospechosas.map(x=>(
+                <div key={x.q.id||x.q.at} style={{padding:'8px 0',borderBottom:'1px solid var(--line)'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontFamily:'var(--mono)',fontSize:12,fontWeight:700,color:'var(--ink)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{x.q.client||'Sin nombre'}</div>
+                      <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginTop:2}}>{fmtRelDate(x.q.at)} · guardado ${fmtCLP(x.saved)} · calculado ${fmtCLP(x.calc)}</div>
+                      <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginTop:2}}>Agendó {x.q.scheduler||'—'} · Atendió {x.q.attendant||'—'} · Pago {x.q.pago||'—'}</div>
+                      {x.q.userName && <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--gold-2)',marginTop:2}}>Registró: {x.q.userName}</div>}
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+                      <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,whiteSpace:'nowrap',borderRadius:4,padding:'2px 6px',
+                        color:x.grave?'var(--danger)':'var(--gold-2)',background:x.grave?'rgba(239,68,68,.12)':'rgba(var(--accent-rgb),.12)',border:`1px solid ${x.grave?'rgba(239,68,68,.3)':'rgba(var(--accent-rgb),.3)'}`}}>{x.tipo}</span>
+                      {x.diffCom>0 && <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}}>com. −${fmtCLP(Math.round(x.diffCom))}</span>}
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div style={{display:'flex',gap:6,marginTop:6,justifyContent:'flex-end'}}>
+                      <button onClick={()=>onFixTotal(x.q,{revisado:true})} style={{fontFamily:'var(--mono)',fontSize:10,padding:'4px 8px',borderRadius:6,border:'1px solid var(--line)',background:'transparent',color:'var(--ink-mute)',cursor:'pointer'}}>Está bien</button>
+                      <button onClick={()=>onFixTotal(x.q,{sugerido:x.calc,totalCost:x.totalCost})} style={{fontFamily:'var(--mono)',fontSize:10,padding:'4px 8px',borderRadius:6,border:'1px solid var(--gold-2)',background:'transparent',color:'var(--gold-2)',cursor:'pointer'}}>Corregir monto</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── ventas con datos incompletos ── */}
       {(()=>{
@@ -4432,6 +4494,24 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
     }
   };
 
+  // Corregir el total de una venta guardada (admin) o marcarla como revisada
+  const fixQuoteTotal = async (q, { revisado, sugerido, totalCost } = {}) => {
+    try {
+      if (revisado) {
+        if (!confirm(`¿El monto $${fmtCLP(q.total)} de ${q.client||'esta venta'} es correcto?\n\nSe quitará de la lista de montos editados.`)) return;
+        await window.__FB.updateQuote(q.id, { montoRevisado: true });
+        showToast("Venta marcada como revisada");
+        return;
+      }
+      const input = prompt(`Monto real cobrado a ${q.client||'el cliente'}:\n(guardado: $${fmtCLP(q.total)} · calculado: $${fmtCLP(sugerido)})`, String(sugerido));
+      if (input === null) return;
+      const nuevo = Number(String(input).replace(/\D/g,""));
+      if (!nuevo) { showToast("Monto inválido"); return; }
+      await window.__FB.updateQuote(q.id, { total: nuevo, profit: nuevo - totalCost, montoRevisado: true, totalAnterior: Number(q.total)||0, montoCorregidoAt: Date.now() });
+      showToast(`Monto corregido a $${fmtCLP(nuevo)}`);
+    } catch(e) { showToast("Error: " + e.message); }
+  };
+
   const deleteQuote = async (id) => {
     await window.__FB.deleteQuote(id);
   };
@@ -4604,7 +4684,7 @@ ${sep}`;
           onCopyInternal={copyInternalSummary} onToggleConcretada={toggleConcretada} />
       )}
       {tab === 'reports' && (
-        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} />
+        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} isAdmin={isAdmin} onFixTotal={fixQuoteTotal} />
       )}
       {tab === 'charts' && (
         <ChartsTab history={history} prices={prices} />
