@@ -2591,7 +2591,7 @@ function TickerBand({items}){
   );
 }
 
-function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin, onFixTotal }){
+function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin, onFixTotal, onFixFields }){
   const [period, setPeriod] = useState('monthly');
   const [navIdx, setNavIdx] = useState(0);
   const [salesOpen, setSalesOpen] = useState(false);
@@ -3198,8 +3198,35 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
             </div>
             <div style={{padding:'4px 12px 12px'}}>
               <div style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)',marginBottom:8,lineHeight:1.4}}>
-                Estas ventas descuadran el balance. Edítalas en el Historial y completa el campo faltante.
+                Estas ventas descuadran el balance. {isAdmin ? 'Elige la persona en cada venta y se guarda al instante.' : 'Pide a un administrador que las complete.'}
               </div>
+              {isAdmin && (()=>{
+                const sinPago = incompletas.filter(q=>!(q.pago||'').trim());
+                const conRegistro = sinPago.filter(q=>TEAM.includes(normName((q.userName||'').trim())));
+                if (sinPago.length===0) return null;
+                const bulk = async (getName, label) => {
+                  const items = sinPago.map(q=>({q,name:getName(q)})).filter(x=>x.name);
+                  if (!items.length) return;
+                  if (!confirm(`¿Asignar Pago ${label} a ${items.length} venta${items.length>1?'s':''}?`)) return;
+                  await onFixFields(items.map(x=>({ q:x.q, patch:{ pago:x.name } })));
+                };
+                return (
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center',padding:'8px',marginBottom:6,borderRadius:8,background:'rgba(239,68,68,.06)',border:'1px dashed rgba(239,68,68,.3)'}}>
+                    <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--ink)',fontWeight:700}}>Pago de las {sinPago.length}:</span>
+                    {conRegistro.length>0 && (
+                      <button onClick={()=>bulk(q=>{ const n=normName((q.userName||'').trim()); return TEAM.includes(n)?n:''; }, '= quien la registró')}
+                        style={{fontFamily:'var(--mono)',fontSize:10,padding:'4px 8px',borderRadius:6,border:'1px solid var(--gold-2)',background:'transparent',color:'var(--gold-2)',cursor:'pointer'}}>
+                        = quien registró ({conRegistro.length})
+                      </button>
+                    )}
+                    <select value="" onChange={e=>{ const n=e.target.value; if(n) bulk(()=>n, `a ${n}`); }}
+                      style={{fontFamily:'var(--mono)',fontSize:10,padding:'4px 6px',borderRadius:6,border:'1px solid var(--line)',background:'var(--bg-2)',color:'var(--ink)'}}>
+                      <option value="">Todas a…</option>
+                      {TEAM.map(n=><option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                );
+              })()}
               {incompletas.map(q=>{
                 const faltan=[];
                 if(!(q.pago||'').trim()) faltan.push('Pago');
@@ -3212,10 +3239,20 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
                       <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginTop:2}}>{fmtRelDate(q.at)} · ${fmtCLP(q.total||0)}</div>
                       {q.userName && <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--gold-2)',marginTop:2}}>Registró: {q.userName}</div>}
                     </div>
-                    <div style={{display:'flex',gap:4,flexShrink:0,flexWrap:'wrap',justifyContent:'flex-end'}}>
-                      {faltan.map(f=>(
-                        <span key={f} style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,color:'var(--danger)',background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.3)',borderRadius:4,padding:'2px 6px',whiteSpace:'nowrap'}}>Falta {f}</span>
-                      ))}
+                    <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0,alignItems:'flex-end'}}>
+                      {faltan.map(f=>{
+                        const field = f==='Pago'?'pago':f==='Agendó'?'scheduler':'attendant';
+                        if (!isAdmin) return (
+                          <span key={f} style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,color:'var(--danger)',background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.3)',borderRadius:4,padding:'2px 6px',whiteSpace:'nowrap'}}>Falta {f}</span>
+                        );
+                        return (
+                          <select key={f} value="" onChange={e=>{ const n=e.target.value; if(n) onFixFields([{ q, patch:{ [field]:n } }]); }}
+                            style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,color:'var(--danger)',background:'rgba(239,68,68,.12)',border:'1px solid rgba(239,68,68,.4)',borderRadius:6,padding:'4px 6px',maxWidth:130}}>
+                            <option value="">Falta {f} ▾</option>
+                            {TEAM.map(n=><option key={n} value={n}>{n}</option>)}
+                          </select>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -4494,6 +4531,14 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
     }
   };
 
+  // Completar Pago / Agendó / Atendió de una o varias ventas guardadas (admin)
+  const fixQuoteFields = async (items) => {
+    try {
+      await Promise.all(items.map(({ q, patch }) => window.__FB.updateQuote(q.id, patch)));
+      showToast(items.length > 1 ? `${items.length} ventas actualizadas` : "Venta actualizada");
+    } catch(e) { showToast("Error: " + e.message); }
+  };
+
   // Corregir el total de una venta guardada (admin) o marcarla como revisada
   const fixQuoteTotal = async (q, { revisado, sugerido, totalCost } = {}) => {
     try {
@@ -4684,7 +4729,7 @@ ${sep}`;
           onCopyInternal={copyInternalSummary} onToggleConcretada={toggleConcretada} />
       )}
       {tab === 'reports' && (
-        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} isAdmin={isAdmin} onFixTotal={fixQuoteTotal} />
+        <ReportsTab history={history} prices={prices} onToggleConcretada={toggleConcretada} onGotoCharts={()=>setTab('charts')} isAdmin={isAdmin} onFixTotal={fixQuoteTotal} onFixFields={fixQuoteFields} />
       )}
       {tab === 'charts' && (
         <ChartsTab history={history} prices={prices} />
