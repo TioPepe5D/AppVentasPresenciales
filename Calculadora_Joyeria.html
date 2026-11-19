@@ -3144,6 +3144,20 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
         if (sospechosas.length===0) return null;
         const graves = sospechosas.filter(x=>x.grave);
         const comPerdida = graves.reduce((s,x)=>s+Math.max(0,x.diffCom),0);
+        const descuentos = sospechosas.filter(x=>!x.grave);
+        // Diferencia de comisión por persona: lo que recibió (monto guardado) − lo que habría recibido con el monto calculado
+        const porPersona = {};
+        const addP = (n,k,v)=>{ porPersona[n]=porPersona[n]||{agendo:0,atendio:0,empresa:0}; porPersona[n][k]+=v; };
+        for (const x of sospechosas) {
+          const d = Math.max(0,x.saved-x.totalCost) - Math.max(0,x.calc-x.totalCost);
+          addP(normName((x.q.scheduler||'').trim()||EMPRESA),'agendo',d*PCT_SCHEDULER);
+          addP(normName((x.q.attendant||'').trim()||EMPRESA),'atendio',d*PCT_ATTENDANT);
+          addP(EMPRESA,'empresa',d*PCT_EMPRESA);
+        }
+        const filasPersona = Object.entries(porPersona).map(([name,v])=>({name,...v,total:v.agendo+v.atendio+v.empresa}))
+          .filter(r=>Math.round(r.total)!==0).sort((a,b)=>a.total-b.total);
+        const sgn = (v)=>{ const r=Math.round(v); return (r<0?'−':r>0?'+':'')+'$'+fmtCLP(Math.abs(r)); };
+        const col = (v)=>Math.round(v)<0?'var(--danger)':Math.round(v)>0?'#22c55e':'var(--ink-mute)';
         return (
           <div className="chart-card" style={{marginBottom:8,border:'1px solid rgba(var(--accent-rgb),.4)'}}>
             <div className="chart-head">
@@ -3156,6 +3170,38 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
                 {graves.length>0 && <> <b style={{color:'var(--danger)'}}>{graves.length} probable{graves.length>1?'s':''} error{graves.length>1?'es':''}</b> · comisiones del equipo afectadas ≈ <b style={{color:'var(--danger)'}}>${fmtCLP(Math.round(comPerdida))}</b>.</>}
                 {' '}Los descuentos pueden ser legítimos: verifica con lo que pagó el cliente.
               </div>
+              {filasPersona.length>0 && (
+                <div style={{margin:'4px 0 10px',padding:'8px 10px',borderRadius:8,background:'var(--bg-2)',border:'1px solid var(--line)'}}>
+                  <div style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:700,color:'var(--ink)',marginBottom:2}}>Diferencia de comisiones por persona</div>
+                  <div style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)',marginBottom:6,lineHeight:1.4}}>
+                    Recibido con el monto guardado vs. lo que habría recibido con el monto calculado. Negativo = recibió menos. Solo corresponde ajustar si el cliente realmente pagó el monto calculado.
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr auto auto auto auto',gap:'4px 10px',fontFamily:'var(--mono)',fontSize:10,alignItems:'baseline'}}>
+                    <span style={{color:'var(--ink-mute)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase'}}>Persona</span>
+                    <span style={{color:'var(--ink-mute)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',textAlign:'right'}}>Agendó</span>
+                    <span style={{color:'var(--ink-mute)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',textAlign:'right'}}>Atendió</span>
+                    <span style={{color:'var(--ink-mute)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',textAlign:'right'}}>Empresa</span>
+                    <span style={{color:'var(--ink-mute)',fontSize:8,letterSpacing:'.1em',textTransform:'uppercase',textAlign:'right'}}>Total</span>
+                    {filasPersona.map(r=>(
+                      <React.Fragment key={r.name}>
+                        <span style={{color:'var(--ink)',fontWeight:700}}>{r.name}</span>
+                        <span style={{textAlign:'right',color:col(r.agendo)}}>{Math.round(r.agendo)?sgn(r.agendo):'—'}</span>
+                        <span style={{textAlign:'right',color:col(r.atendio)}}>{Math.round(r.atendio)?sgn(r.atendio):'—'}</span>
+                        <span style={{textAlign:'right',color:col(r.empresa)}}>{Math.round(r.empresa)?sgn(r.empresa):'—'}</span>
+                        <span style={{textAlign:'right',color:col(r.total),fontWeight:700}}>{sgn(r.total)}</span>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {isAdmin && descuentos.length>0 && (
+                <button onClick={async()=>{
+                  if(!confirm(`¿Marcar las ${descuentos.length} ventas con descuento/sobreprecio como correctas?\n\nSe mantiene el monto guardado (lo que pagó el cliente) y se quitan de esta lista. Las marcadas en rojo no se tocan.`)) return;
+                  await onFixFields(descuentos.map(x=>({ q:x.q, patch:{ montoRevisado:true } })));
+                }} style={{width:'100%',marginBottom:8,fontFamily:'var(--mono)',fontSize:10,padding:'7px 8px',borderRadius:6,border:'1px solid var(--line)',background:'transparent',color:'var(--ink)',cursor:'pointer'}}>
+                  ✓ Todas las {descuentos.length} con descuento están bien
+                </button>
+              )}
               {sospechosas.map(x=>(
                 <div key={x.q.id||x.q.at} style={{padding:'8px 0',borderBottom:'1px solid var(--line)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
@@ -3168,7 +3214,7 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
                     <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
                       <span style={{fontFamily:'var(--mono)',fontSize:9,fontWeight:700,whiteSpace:'nowrap',borderRadius:4,padding:'2px 6px',
                         color:x.grave?'var(--danger)':'var(--gold-2)',background:x.grave?'rgba(239,68,68,.12)':'rgba(var(--accent-rgb),.12)',border:`1px solid ${x.grave?'rgba(239,68,68,.3)':'rgba(var(--accent-rgb),.3)'}`}}>{x.tipo}</span>
-                      {x.diffCom>0 && <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}}>com. −${fmtCLP(Math.round(x.diffCom))}</span>}
+                      {Math.round(x.diffCom)!==0 && <span style={{fontFamily:'var(--mono)',fontSize:9,color:'var(--ink-mute)'}} title="Comisión equipo (agendó + atendió) vs. monto calculado">com. {x.diffCom>0?'−':'+'}${fmtCLP(Math.abs(Math.round(x.diffCom)))}</span>}
                     </div>
                   </div>
                   {isAdmin && (
