@@ -1767,8 +1767,8 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
       totalCost += costFor(prices[line.category], kileroActive) * g;
     }
 
-    return { grams, insumos, totalCost, profit: (Number(totals.total) || 0) - totalCost };
-  }, [lines, prices, totals.total, kileroActive]);
+    return { grams, insumos, totalCost, profit: (Number(displayTotal) || 0) - totalCost };
+  }, [lines, prices, displayTotal, kileroActive]);
   return (
     <div className="fade-in">
       <div className="card">
@@ -2155,7 +2155,7 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
               <h3>DETALLES VENTA</h3>
               <div className="row">
                 <span className="k">+ Venta Total</span>
-                <span className="v">${fmtCLP(totals.total)}</span>
+                <span className="v">${fmtCLP(displayTotal)}</span>
               </div>
               <div className="row">
                 <span className="k">- Costo Total</span>
@@ -2176,9 +2176,10 @@ function CalcTab({ clientName, setClientName, pago, setPago, scheduler, setSched
                 </span>
                 {editingTotal ? (
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={customTotal}
-                    onChange={e => setCustomTotal(e.target.value)}
+                    onChange={e => setCustomTotal(e.target.value.replace(/\D/g,""))}
                     onBlur={()=>{ if(customTotal==="") setEditingTotal(false); }}
                     placeholder={String(totals.total)}
                     autoFocus
@@ -4191,7 +4192,7 @@ function App(){
   const [pago, setPago]             = useState(() => { try { return JSON.parse(localStorage.getItem(LS_DRAFT))?.pago || localStorage.getItem(LS_PAGO) || ""; } catch { return localStorage.getItem(LS_PAGO) || ""; } });
   const [concretada, setConcretada] = useState(false);
   const [lines, setLines]           = useState(() => { try { const d = JSON.parse(localStorage.getItem(LS_DRAFT)); return d?.lines?.length ? d.lines : [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } catch { return [{ id: uid(), category: CATEGORY_ORDER[0], grams: "" }]; } });
-  const [customTotal, setCustomTotal] = useState("");
+  const [customTotal, setCustomTotal] = useState(() => { try { const v = JSON.parse(localStorage.getItem(LS_DRAFT))?.customTotal; return v ? String(v) : ""; } catch { return ""; } });
 
   const [toast, setToast]   = useState("");
   const toastTimer           = useRef(null);
@@ -4220,8 +4221,8 @@ function App(){
   useEffect(() => { localStorage.setItem(LS_PRICES, JSON.stringify(prices));  }, [prices]);
   useEffect(() => { localStorage.setItem(LS_PAGO,   pago);                    }, [pago]);
   useEffect(() => {
-    localStorage.setItem(LS_DRAFT, JSON.stringify({ clientName, scheduler, attendant, pago, lines }));
-  }, [clientName, scheduler, attendant, pago, lines]);
+    localStorage.setItem(LS_DRAFT, JSON.stringify({ clientName, scheduler, attendant, pago, lines, customTotal }));
+  }, [clientName, scheduler, attendant, pago, lines, customTotal]);
 
   // Tema
   const [theme, setTheme]           = useState(() => localStorage.getItem(LS_THEME) || 'dark');
@@ -4395,7 +4396,7 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
 
   const loadQuote = (q) => {
     setClientName(q.client || ""); setScheduler(normName(q.scheduler || "")); setAttendant(normName(q.attendant || "")); setConcretada(!!q.concretada);
-    setLines(q.lines.map(l => ({
+    const loaded = q.lines.map(l => ({
       id: uid(), category: l.category,
       grams:      (l.category === INSUMO_KEY || l.category === LOTE_KEY) ? '' : String(l.grams),
       insumoName: l.insumoName  || '',
@@ -4407,7 +4408,12 @@ Venta: $${fmtCLP(ventaTotal)}${kileroActive ? '\n(Precio Kilero)' : ''}`;
       lotePrice:  l.lotePrice   ? String(l.lotePrice)   : '',
       customPrice: l.customPrice ? String(l.customPrice) : '',
       isGift: !!l.isGift
-    })));
+    }));
+    setLines(loaded);
+    // Si la venta original tenía un monto editado, conservarlo
+    const calc = computeTotals(loaded, prices).total;
+    const saved = Number(q.total) || 0;
+    setCustomTotal(saved > 0 && Math.round(saved) !== Math.round(calc) ? String(Math.round(saved)) : "");
     setTab('calc');
     showToast("Cotización cargada");
   };
