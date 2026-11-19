@@ -3122,6 +3122,24 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
         </div>
       )}
 
+      {/* ── deshacer correcciones de monto ── */}
+      {isAdmin && (()=>{
+        const corregidas = periodQuotes.filter(q=>q.montoCorregidoAt && typeof q.totalAnterior==='number' && q.totalAnterior>0);
+        if (!corregidas.length) return null;
+        return (
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,margin:'0 0 8px',padding:'8px 12px',borderRadius:10,border:'1px solid var(--line)',fontFamily:'var(--mono)',fontSize:10,color:'var(--ink-mute)'}}>
+            <span>{corregidas.length} venta{corregidas.length>1?'s':''} con monto corregido en este período</span>
+            <button onClick={async()=>{
+              if(!confirm(`¿Deshacer la corrección de ${corregidas.length} venta${corregidas.length>1?'s':''}?\n\nVuelven a su monto anterior.`)) return;
+              await onFixFields(corregidas.map(q=>{
+                const { totalCost } = quoteCostAndProfit(q, prices);
+                return { q, patch:{ total:q.totalAnterior, profit:q.totalAnterior-totalCost, montoRevisado:false, montoCorregidoAt:null, totalAnterior:null } };
+              }));
+            }} style={{fontFamily:'var(--mono)',fontSize:10,padding:'4px 8px',borderRadius:6,border:'1px solid var(--line)',background:'transparent',color:'var(--ink)',cursor:'pointer',whiteSpace:'nowrap'}}>↶ Deshacer</button>
+          </div>
+        );
+      })()}
+
       {/* ── ventas con monto distinto al calculado (falla hasta v118) ── */}
       {(()=>{
         const sospechosas = periodQuotes.map(q=>{
@@ -3200,6 +3218,16 @@ function ReportsTab({ history, prices, onToggleConcretada, onGotoCharts, isAdmin
                   await onFixFields(descuentos.map(x=>({ q:x.q, patch:{ montoRevisado:true } })));
                 }} style={{width:'100%',marginBottom:8,fontFamily:'var(--mono)',fontSize:10,padding:'7px 8px',borderRadius:6,border:'1px solid var(--line)',background:'transparent',color:'var(--ink)',cursor:'pointer'}}>
                   ✓ Todas las {descuentos.length} con descuento están bien
+                </button>
+              )}
+              {isAdmin && (
+                <button onClick={async()=>{
+                  const totalDif = sospechosas.reduce((s,x)=>s+(x.calc-x.saved),0);
+                  if(!confirm(`¿Corregir las ${sospechosas.length} ventas al monto CALCULADO?\n\nDiferencia total en ventas: ${totalDif<0?'−':'+'}$${fmtCLP(Math.abs(totalDif))}\n\nSe actualizan total, utilidad y comisiones. El monto anterior queda respaldado en cada venta.\n\nHazlo solo si los clientes pagaron el precio calculado.`)) return;
+                  const now = Date.now();
+                  await onFixFields(sospechosas.map(x=>({ q:x.q, patch:{ total:x.calc, profit:x.calc-x.totalCost, montoRevisado:true, totalAnterior:Number(x.q.total)||0, montoCorregidoAt:now } })));
+                }} style={{width:'100%',marginBottom:8,fontFamily:'var(--mono)',fontSize:10,fontWeight:700,padding:'7px 8px',borderRadius:6,border:'1px solid var(--gold-2)',background:'rgba(var(--accent-rgb),.12)',color:'var(--gold-2)',cursor:'pointer'}}>
+                  ⟳ Corregir las {sospechosas.length} al monto calculado
                 </button>
               )}
               {sospechosas.map(x=>(
