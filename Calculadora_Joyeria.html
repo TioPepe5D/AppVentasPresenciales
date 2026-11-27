@@ -714,8 +714,8 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 // ---------- Data ----------
 // 4 grupos de costo → mapeados a las categorías de venta
 const MATERIAL_COSTS = [
-  { key:'cadena',   name:'Cadena 🔗',        cost:450,  costKilero:405,  cats:['collar_pulsera_mujer_925','collar_pulsera_hombre_925'] },
-  { key:'micro',    name:'Microzircón 💎',   cost:650,  costKilero:550,  cats:['aros_colgantes_925','anillos_925','collar_pulsera_micro'] },
+  { key:'cadena',   name:'Cadena 🔗',        cost:450,  costKilero:410,  cats:['collar_pulsera_mujer_925','collar_pulsera_hombre_925'] },
+  { key:'micro',    name:'Microzircón 💎',   cost:650,  costKilero:560,  cats:['aros_colgantes_925','anillos_925','collar_pulsera_micro'] },
   { key:'italiana', name:'Italiana 925 🇮🇹', cost:3000, costKilero:3000, cats:['italiana_925'] },
   { key:'gf18k',   name:'Oro GF 18K ⚜️',    cost:1600, costKilero:1500, cats:['gf_18k'] },
 ];
@@ -723,11 +723,11 @@ const CAT_MATERIAL = {};
 MATERIAL_COSTS.forEach(m => m.cats.forEach(c => CAT_MATERIAL[c] = m.key));
 
 const DEFAULT_PRICES = {
-  "collar_pulsera_mujer_925":  { "name": "Collar y Pul Mujer 💁🏼‍♀️",  "cost": 450,  "costKilero": 405  },
-  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "cost": 450,  "costKilero": 405  },
-  "aros_colgantes_925":        { "name": "Aros y Colgantes ✨",        "cost": 650,  "costKilero": 550  },
-  "anillos_925":               { "name": "Anillos 💍",                 "cost": 650,  "costKilero": 550  },
-  "collar_pulsera_micro":      { "name": "Collar y Pul Micro 💎",      "cost": 650,  "costKilero": 550  },
+  "collar_pulsera_mujer_925":  { "name": "Collar y Pul Mujer 💁🏼‍♀️",  "cost": 450,  "costKilero": 410  },
+  "collar_pulsera_hombre_925": { "name": "Collar y Pul Hombre 🙋🏻‍♂️", "cost": 450,  "costKilero": 410  },
+  "aros_colgantes_925":        { "name": "Aros y Colgantes ✨",        "cost": 650,  "costKilero": 560  },
+  "anillos_925":               { "name": "Anillos 💍",                 "cost": 650,  "costKilero": 560  },
+  "collar_pulsera_micro":      { "name": "Collar y Pul Micro 💎",      "cost": 650,  "costKilero": 560  },
   "italiana_925":              { "name": "Italiana 🇮🇹",               "cost": 3000, "costKilero": 3000 },
   "gf_18k":                    { "name": "GF 18 K ⚜️",                 "cost": 1600, "costKilero": 1500 }
 };
